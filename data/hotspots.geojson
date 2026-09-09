@@ -1,0 +1,50 @@
+{
+  "type": "FeatureCollection",
+  "generated_at": "2026-09-09T00:00:00Z",
+  "metadata": {
+    "source": "NASA FIRMS",
+    "sample": true
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          113.9213,
+          -2.2096
+        ]
+      },
+      "properties": {
+        "latitude": -2.2096,
+        "longitude": 113.9213,
+        "acq_date": "2026-09-09",
+        "acq_time": "0630",
+        "satellite": "N21",
+        "instrument": "VIIRS",
+        "confidence": "high",
+        "frp": 42.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          114.0031,
+          -2.1872
+        ]
+      },
+      "properties": {
+        "latitude": -2.1872,
+        "longitude": 114.0031,
+        "acq_date": "2026-09-09",
+        "acq_time": "0712",
+        "satellite": "N20",
+        "instrument": "VIIRS",
+        "confidence": "nominal",
+        "frp": 18.7
+      }
+    }
+  ]
+}
