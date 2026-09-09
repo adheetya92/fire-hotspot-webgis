@@ -165,3 +165,45 @@ button {
   .app { grid-template-columns: 1fr; grid-template-rows: 250px 1fr; }
   .sidebar { border-right: 0; border-bottom: 1px solid #dbe1e8; }
 }
+.ol-popup {
+
+    background:white;
+    border-radius:10px;
+    padding:15px;
+    min-width:260px;
+    box-shadow:0 5px 20px rgba(0,0,0,.35);
+
+    transform:translate(-50%,-110%);
+
+}
+
+
+.ol-popup h3 {
+
+    margin-top:0;
+    font-size:18px;
+
+}
+
+
+.ol-popup table {
+
+    width:100%;
+    border-collapse:collapse;
+
+}
+
+
+.ol-popup td {
+
+    padding:5px;
+    border-bottom:1px solid #ddd;
+
+}
+
+
+.ol-popup td:first-child {
+
+    font-weight:bold;
+
+}
