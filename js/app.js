@@ -85,42 +85,126 @@ function formatValue(v) {
   return v === undefined || v === null || v === "" ? "-" : String(v);
 }
 
-function showPopup(feature, pixel) {
-  const p = feature.getProperties();
-  const popup = document.getElementById("popup");
-  const content = document.getElementById("popupContent");
+// ===============================
+// POPUP HOTSPOT OPENLAYERS
+// ===============================
 
-  content.innerHTML = `
-    <h3>🔥 Hotspot</h3>
-    <table>
-      <tr><td>Tanggal</td><td>${formatValue(p.acq_date)}</td></tr>
-      <tr><td>Waktu UTC</td><td>${formatValue(p.acq_time)}</td></tr>
-      <tr><td>Satelit</td><td>${formatValue(p.satellite)}</td></tr>
-      <tr><td>Instrument</td><td>${formatValue(p.instrument)}</td></tr>
-      <tr><td>Confidence</td><td>${formatValue(p.confidence)}</td></tr>
-      <tr><td>FRP</td><td>${formatValue(p.frp)} MW</td></tr>
-      <tr><td>Latitude</td><td>${formatValue(p.latitude)}</td></tr>
-      <tr><td>Longitude</td><td>${formatValue(p.longitude)}</td></tr>
-    </table>
-  `;
+const popupElement = document.getElementById("popup");
 
-  popup.style.left = `${pixel[0]}px`;
-  popup.style.top = `${pixel[1]}px`;
-  popup.hidden = false;
-}
-
-map.on("singleclick", event => {
-  let hit = false;
-  map.forEachFeatureAtPixel(event.pixel, feature => {
-    hit = true;
-    showPopup(feature, event.pixel);
-    return true;
-  });
-  if (!hit) document.getElementById("popup").hidden = true;
+const popupOverlay = new ol.Overlay({
+  element: popupElement,
+  autoPan: {
+    animation: {
+      duration: 250
+    }
+  }
 });
 
-document.getElementById("popupClose").addEventListener("click", () => {
-  document.getElementById("popup").hidden = true;
+map.addOverlay(popupOverlay);
+
+
+function showPopup(feature, coordinate) {
+
+  const p = feature.getProperties();
+
+  const content = document.getElementById("popupContent");
+
+
+  content.innerHTML = `
+
+    <h3>🔥 Hotspot FIRMS</h3>
+
+    <table>
+
+      <tr>
+        <td>Tanggal</td>
+        <td>${formatValue(p.acq_date)}</td>
+      </tr>
+
+      <tr>
+        <td>Waktu UTC</td>
+        <td>${formatValue(p.acq_time)}</td>
+      </tr>
+
+      <tr>
+        <td>Satelit</td>
+        <td>${formatValue(p.satellite)}</td>
+      </tr>
+
+      <tr>
+        <td>Sensor</td>
+        <td>${formatValue(p.instrument)}</td>
+      </tr>
+
+      <tr>
+        <td>Confidence</td>
+        <td>${formatValue(p.confidence)}</td>
+      </tr>
+
+      <tr>
+        <td>FRP</td>
+        <td>${formatValue(p.frp)} MW</td>
+      </tr>
+
+      <tr>
+        <td>Latitude</td>
+        <td>${formatValue(p.latitude)}</td>
+      </tr>
+
+      <tr>
+        <td>Longitude</td>
+        <td>${formatValue(p.longitude)}</td>
+      </tr>
+
+    </table>
+
+  `;
+
+
+  popupOverlay.setPosition(coordinate);
+}
+
+
+
+map.on("singleclick", event => {
+
+
+  const feature = map.forEachFeatureAtPixel(
+    event.pixel,
+    function(feature){
+
+      if(feature.get("confidence")){
+        return feature;
+      }
+
+    }
+  );
+
+
+  if(feature){
+
+    showPopup(
+      feature,
+      event.coordinate
+    );
+
+
+  } else {
+
+    popupOverlay.setPosition(undefined);
+
+  }
+
+
+});
+
+
+document
+.getElementById("popupClose")
+.addEventListener("click",()=>{
+
+  popupOverlay.setPosition(undefined);
+
 });
 
 document.getElementById("confidence").addEventListener("change", applyFilters);
