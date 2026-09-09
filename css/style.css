@@ -1,209 +1,714 @@
-* { box-sizing: border-box; }
+/* =========================================================
+   FIRE HOTSPOT WEBGIS
+   STYLE.CSS
+   ========================================================= */
 
-html, body {
+* {
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   HTML & BODY
+   ========================================================= */
+
+html,
+body {
   margin: 0;
+  padding: 0;
+
+  width: 100%;
   height: 100%;
+
   font-family: Arial, Helvetica, sans-serif;
+
   background: #f4f6f8;
   color: #1f2937;
+
+  overflow: hidden;
 }
+
+
+/* =========================================================
+   TOPBAR
+   ========================================================= */
 
 .topbar {
   height: 76px;
+
   padding: 12px 20px;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
+
   background: #111827;
   color: white;
+
+  position: relative;
+  z-index: 100;
 }
 
-.topbar h1 { margin: 0; font-size: 21px; }
-.topbar p { margin: 4px 0 0; color: #cbd5e1; font-size: 12px; }
+
+.topbar h1 {
+  margin: 0;
+
+  font-size: 21px;
+  line-height: 1.2;
+}
+
+
+.topbar p {
+  margin: 4px 0 0;
+
+  color: #cbd5e1;
+
+  font-size: 12px;
+}
+
 
 #lastUpdate {
   font-size: 12px;
+
   color: #d1d5db;
+
   text-align: right;
+
+  max-width: 320px;
 }
+
+
+/* =========================================================
+   APP LAYOUT
+   ========================================================= */
 
 .app {
+  width: 100%;
   height: calc(100vh - 76px);
+
   display: grid;
-  grid-template-columns: 290px 1fr;
+
+  grid-template-columns: 290px minmax(0, 1fr);
+
+  overflow: hidden;
 }
+
+
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
 
 .sidebar {
+  height: 100%;
+
   overflow-y: auto;
+
   padding: 14px;
+
   background: #ffffff;
+
   border-right: 1px solid #dbe1e8;
+
+  position: relative;
+
+  z-index: 20;
 }
 
-.panel, .stats {
+
+/* =========================================================
+   PANEL
+   ========================================================= */
+
+.panel,
+.stats {
   margin-bottom: 14px;
+
   padding: 14px;
+
   border: 1px solid #e5e7eb;
+
   border-radius: 10px;
-  background: white;
+
+  background: #ffffff;
 }
+
 
 .panel h2 {
   margin: 0 0 12px;
+
   font-size: 15px;
 }
 
+
+/* =========================================================
+   FORM
+   ========================================================= */
+
 label {
   display: block;
+
   margin: 10px 0 5px;
+
   font-size: 12px;
+
   font-weight: 700;
 }
 
-select, button {
+
+select,
+button {
   width: 100%;
+
   padding: 9px;
+
   border: 1px solid #cbd5e1;
+
   border-radius: 7px;
-  background: white;
+
+  background: #ffffff;
+
+  color: #1f2937;
+
+  font-family: inherit;
+
+  font-size: 14px;
 }
+
+
+select {
+  cursor: pointer;
+}
+
 
 button {
   margin-top: 12px;
+
   cursor: pointer;
+
   font-weight: 700;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
+
+
+button:hover {
+  background: #f8fafc;
+
+  border-color: #94a3b8;
+}
+
+
+button:active {
+  background: #e2e8f0;
+}
+
+
+/* =========================================================
+   STATISTICS
+   ========================================================= */
 
 .stats {
   display: grid;
+
   grid-template-columns: 1fr 1fr;
+
   gap: 8px;
+
   border: 0;
+
   padding: 0;
+
   background: transparent;
 }
 
+
 .stats div {
   padding: 11px;
+
   border-radius: 9px;
+
   background: #f1f5f9;
 }
 
+
 .stats span {
   display: block;
+
   font-size: 11px;
+
   color: #64748b;
+
+  margin-bottom: 2px;
 }
+
 
 .stats strong {
   font-size: 21px;
+
+  color: #111827;
 }
+
+
+/* =========================================================
+   LEGEND
+   ========================================================= */
 
 .legend p {
   margin: 8px 0;
+
   font-size: 12px;
 }
 
+
 .dot {
   display: inline-block;
+
   width: 10px;
   height: 10px;
+
   margin-right: 7px;
+
   border-radius: 50%;
+
+  vertical-align: middle;
 }
 
-.dot.high { background: #dc2626; }
-.dot.nominal { background: #f97316; }
-.dot.low { background: #eab308; }
+
+.dot.high {
+  background: #dc2626;
+}
+
+
+.dot.nominal {
+  background: #f97316;
+}
+
+
+.dot.low {
+  background: #eab308;
+}
+
+
+/* =========================================================
+   SOURCE INFORMATION
+   ========================================================= */
 
 .source {
   margin: 0;
+
   line-height: 1.5;
+
   font-size: 11px;
+
   color: #64748b;
 }
 
+
+/* =========================================================
+   MAP CONTAINER
+   ========================================================= */
+
 .map-wrap {
   position: relative;
+
   min-width: 0;
+  min-height: 0;
+
+  width: 100%;
+  height: 100%;
+
+  overflow: hidden;
 }
+
 
 #map {
   width: 100%;
   height: 100%;
 }
 
-.popup {
-  position: absolute;
-  min-width: 260px;
-  max-width: 330px;
-  padding: 14px;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 5px 25px rgba(0,0,0,.2);
-  transform: translate(-50%, calc(-100% - 15px));
+
+/* =========================================================
+   OPENLAYERS CONTROLS
+   ========================================================= */
+
+.ol-control {
   z-index: 10;
 }
 
-.popup button {
-  width: auto;
-  margin: 0;
-  padding: 0 5px;
-  position: absolute;
-  right: 8px;
-  top: 6px;
+
+.ol-zoom {
+  top: 10px;
+  left: 10px;
+}
+
+
+.ol-zoom button {
+  width: 28px;
+  height: 28px;
+
+  padding: 0;
+
+  margin: 1px;
+
+  font-size: 18px;
+
+  line-height: 28px;
+
   border: 0;
-  font-size: 20px;
-}
 
-.popup h3 { margin: 0 25px 10px 0; font-size: 15px; }
-.popup table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.popup td { padding: 4px 0; border-bottom: 1px solid #f1f5f9; }
-.popup td:first-child { font-weight: 700; color: #64748b; }
+  border-radius: 2px;
 
-@media (max-width: 800px) {
-  .app { grid-template-columns: 1fr; grid-template-rows: 250px 1fr; }
-  .sidebar { border-right: 0; border-bottom: 1px solid #dbe1e8; }
-}
-.ol-popup {
+  background: rgba(255, 255, 255, 0.9);
 
-    background:white;
-    border-radius:10px;
-    padding:15px;
-    min-width:260px;
-    box-shadow:0 5px 20px rgba(0,0,0,.35);
-
-    transform:translate(-50%,-110%);
-
+  color: #1f2937;
 }
 
 
-.ol-popup h3 {
+.ol-zoom button:hover {
+  background: #ffffff;
+}
 
-    margin-top:0;
-    font-size:18px;
+
+/* =========================================================
+   HOTSPOT POPUP
+   Digunakan oleh app.js baru
+   ========================================================= */
+
+#popup {
+  position: absolute;
+
+  min-width: 260px;
+  max-width: 340px;
+
+  padding: 14px;
+
+  background: #ffffff;
+
+  color: #1f2937;
+
+  border: 1px solid #dbe1e8;
+
+  border-radius: 10px;
+
+  box-shadow:
+    0 8px 25px rgba(0, 0, 0, 0.20);
+
+  z-index: 9999;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  pointer-events: auto;
+}
+
+
+/* =========================================================
+   POPUP CLOSE BUTTON
+   ========================================================= */
+
+#popupClose {
+  position: absolute;
+
+  top: 5px;
+  right: 7px;
+
+  width: 28px;
+  height: 28px;
+
+  margin: 0;
+
+  padding: 0;
+
+  border: 0;
+
+  border-radius: 50%;
+
+  background: transparent;
+
+  color: #475569;
+
+  font-size: 22px;
+
+  font-weight: 400;
+
+  line-height: 28px;
+
+  text-align: center;
+
+  cursor: pointer;
+}
+
+
+#popupClose:hover {
+  background: #f1f5f9;
+
+  color: #111827;
+}
+
+
+/* =========================================================
+   POPUP TITLE
+   ========================================================= */
+
+.popup-title {
+  margin: 0 28px 10px 0;
+
+  font-size: 17px;
+
+  font-weight: 700;
+
+  line-height: 1.3;
+}
+
+
+/* =========================================================
+   POPUP TABLE
+   ========================================================= */
+
+.popup-table {
+  width: 100%;
+
+  border-collapse: collapse;
+
+  font-size: 12px;
+}
+
+
+.popup-table tr {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+
+.popup-table tr:last-child {
+  border-bottom: 0;
+}
+
+
+.popup-table td {
+  padding: 5px 3px;
+
+  vertical-align: top;
+}
+
+
+.popup-table td:first-child {
+  width: 43%;
+
+  font-weight: 700;
+
+  color: #64748b;
+}
+
+
+.popup-table td:last-child {
+  color: #111827;
+
+  word-break: break-word;
+}
+
+
+/* =========================================================
+   CONFIDENCE COLORS
+   ========================================================= */
+
+.confidence-high {
+  color: #dc2626;
+}
+
+
+.confidence-nominal {
+  color: #f97316;
+}
+
+
+.confidence-low {
+  color: #ca8a04;
+}
+
+
+/* =========================================================
+   ADMINISTRATIVE LAYER
+   ========================================================= */
+
+/*
+   Layer provinsi dan kabupaten sebenarnya
+   sudah diberi style dari app.js.
+
+   Bagian ini hanya memastikan layer tetap
+   berada di belakang hotspot.
+*/
+
+.ol-layer {
+  pointer-events: auto;
+}
+
+
+/* =========================================================
+   RESPONSIVE - TABLET
+   ========================================================= */
+
+@media (max-width: 900px) {
+
+  .app {
+    grid-template-columns: 250px minmax(0, 1fr);
+  }
+
+  .sidebar {
+    padding: 10px;
+  }
+
+  .panel,
+  .stats {
+    margin-bottom: 10px;
+  }
+
+  #popup {
+    min-width: 230px;
+
+    max-width: 300px;
+  }
 
 }
 
 
-.ol-popup table {
+/* =========================================================
+   RESPONSIVE - MOBILE
+   ========================================================= */
 
-    width:100%;
-    border-collapse:collapse;
+@media (max-width: 700px) {
+
+  html,
+  body {
+    overflow: auto;
+  }
+
+
+  .topbar {
+    height: auto;
+
+    min-height: 76px;
+
+    padding: 10px 14px;
+
+    align-items: flex-start;
+
+    gap: 10px;
+  }
+
+
+  .topbar h1 {
+    font-size: 18px;
+  }
+
+
+  .topbar p {
+    font-size: 11px;
+  }
+
+
+  #lastUpdate {
+    font-size: 10px;
+
+    max-width: 150px;
+  }
+
+
+  .app {
+    height: calc(100vh - 76px);
+
+    grid-template-columns: 1fr;
+
+    grid-template-rows:
+      auto
+      minmax(400px, 1fr);
+
+    overflow: hidden;
+  }
+
+
+  .sidebar {
+    height: auto;
+
+    max-height: 280px;
+
+    overflow-y: auto;
+
+    border-right: 0;
+
+    border-bottom:
+      1px solid #dbe1e8;
+  }
+
+
+  .map-wrap {
+    min-height: 400px;
+  }
+
+
+  #popup {
+    min-width: 220px;
+
+    max-width: calc(100vw - 40px);
+
+    font-size: 12px;
+  }
 
 }
 
 
-.ol-popup td {
+/* =========================================================
+   SMALL MOBILE
+   ========================================================= */
 
-    padding:5px;
-    border-bottom:1px solid #ddd;
+@media (max-width: 450px) {
 
-}
+  .topbar {
+    flex-direction: column;
+  }
 
 
-.ol-popup td:first-child {
+  #lastUpdate {
+    width: 100%;
 
-    font-weight:bold;
+    max-width: none;
+
+    text-align: left;
+  }
+
+
+  .app {
+    grid-template-rows:
+      260px
+      minmax(400px, 1fr);
+  }
+
+
+  .sidebar {
+    max-height: 260px;
+  }
+
+
+  .stats strong {
+    font-size: 18px;
+  }
+
+
+  #popup {
+    min-width: 210px;
+
+    max-width:
+      calc(100vw - 30px);
+
+    padding: 12px;
+  }
+
+
+  .popup-table {
+    font-size: 11px;
+  }
 
 }
