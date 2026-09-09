@@ -61,6 +61,8 @@ const hotspotSource = new VectorSource();
 const hotspotLayer = new VectorLayer({
   source: hotspotSource,
 
+  zIndex: 100,
+
   style: function (feature) {
 
     const confidence =
@@ -136,9 +138,7 @@ const map = new Map({
 
     baseLayer,
 
-    kabupatenLayer,
-
-    provinsiLayer,
+    tnsLayer,
 
     hotspotLayer
 
