@@ -99,7 +99,7 @@ async function loadProvinsi(){
     features.length
   );
 
-}}loadProvinsi();
+}loadProvinsi();
 
 let allFeatures = [];
 
