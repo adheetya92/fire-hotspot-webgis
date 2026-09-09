@@ -1,80 +1,46 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Fire Hotspot Monitoring</title>
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.6.1/ol.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Fire Hotspot WebGIS</title>
+
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css"
+  >
+
+  <link
+    rel="stylesheet"
+    href="css/style.css"
+  >
 </head>
+
 <body>
+
   <header class="topbar">
     <div>
-      <h1>🔥 Fire Hotspot Monitoring by Adheetya ver.0.1</h1>
-      <p>NASA FIRMS • VIIRS NOAA-20 / NOAA-21</p>
+      <h1>🔥 Fire Hotspot WebGIS</h1>
+      <p>OpenLayers + NASA FIRMS + TNS Boundary + GPS + KML/KMZ</p>
     </div>
-    <div id="lastUpdate">Memuat data...</div>
+
+    <div id="lastUpdate">
+      Memuat data...
+    </div>
   </header>
 
   <main class="app">
+
     <aside class="sidebar">
+
       <section class="panel">
-        <h2>Filter</h2>
-        <!-- =====================================================
-     GPS / LOKASI PENGGUNA
-     ===================================================== -->
+        <h2>🔥 Filter Hotspot</h2>
 
-<div class="panel gps-panel">
+        <label for="confidence">
+          Confidence
+        </label>
 
-  <h2>📍 Lokasi Saya</h2>
-
-  <button
-    id="gpsButton"
-    type="button"
-  >
-    📍 Dapatkan Lokasi Saya
-  </button>
-
-  <button
-    id="gpsFollowButton"
-    type="button"
-    class="gps-follow-button"
-  >
-    🎯 Ikuti Lokasi
-  </button>
-
-  <div
-    id="gpsStatus"
-    class="gps-status"
-  >
-    GPS belum digunakan
-  </div>
-
-  <div
-    id="gpsInfo"
-    class="gps-info"
-    hidden
-  >
-
-    <div>
-      <span>Latitude</span>
-      <strong id="gpsLatitude">-</strong>
-    </div>
-
-    <div>
-      <span>Longitude</span>
-      <strong id="gpsLongitude">-</strong>
-    </div>
-
-    <div>
-      <span>Akurasi</span>
-      <strong id="gpsAccuracy">-</strong>
-    </div>
-
-  </div>
-
-</div>
-        <label for="confidence">Confidence</label>
         <select id="confidence">
           <option value="all">Semua</option>
           <option value="high">High</option>
@@ -82,48 +48,205 @@
           <option value="low">Low</option>
         </select>
 
-        <label for="satellite">Satelit</label>
+        <label for="satellite">
+          Satelit
+        </label>
+
         <select id="satellite">
           <option value="all">Semua</option>
-          <option value="N20">NOAA-20</option>
-          <option value="N21">NOAA-21</option>
+          <option value="NOAA-20">NOAA-20</option>
+          <option value="NOAA-21">NOAA-21</option>
         </select>
 
-        <button id="reset">Reset filter</button>
+        <button id="reset" type="button">
+          Reset Filter
+        </button>
       </section>
 
-      <section class="stats">
-        <div><span>Total</span><strong id="total">0</strong></div>
-        <div><span>High</span><strong id="high">0</strong></div>
-        <div><span>Nominal</span><strong id="nominal">0</strong></div>
-        <div><span>Low</span><strong id="low">0</strong></div>
+
+      <section class="panel upload-panel">
+        <h2>📂 Upload KML / KMZ</h2>
+
+        <p class="upload-help">
+          Upload satu atau beberapa file KML/KMZ.
+          File diproses langsung di browser.
+        </p>
+
+        <label
+          for="kmlFileInput"
+          class="upload-file-label"
+        >
+          📁 Pilih KML / KMZ
+        </label>
+
+        <input
+          id="kmlFileInput"
+          type="file"
+          accept=".kml,.kmz,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz"
+          multiple
+        >
+
+        <div
+          id="uploadStatus"
+          class="upload-status"
+        >
+          Belum ada file yang di-upload.
+        </div>
+
+        <div
+          id="uploadedLayerList"
+          class="uploaded-layer-list"
+        ></div>
       </section>
+
+
+      <section class="panel gps-panel">
+        <h2>📍 Lokasi Saya</h2>
+
+        <button
+          id="gpsButton"
+          type="button"
+        >
+          📍 Dapatkan Lokasi Saya
+        </button>
+
+        <button
+          id="gpsFollowButton"
+          type="button"
+          class="gps-follow-button"
+        >
+          🎯 Ikuti Lokasi
+        </button>
+
+        <div
+          id="gpsStatus"
+          class="gps-status"
+        >
+          GPS belum digunakan
+        </div>
+
+        <div
+          id="gpsInfo"
+          class="gps-info"
+          hidden
+        >
+          <div>
+            <span>Latitude</span>
+            <strong id="gpsLatitude">-</strong>
+          </div>
+
+          <div>
+            <span>Longitude</span>
+            <strong id="gpsLongitude">-</strong>
+          </div>
+
+          <div>
+            <span>Akurasi</span>
+            <strong id="gpsAccuracy">-</strong>
+          </div>
+        </div>
+      </section>
+
+
+      <section class="stats">
+        <div>
+          <span>Total</span>
+          <strong id="total">0</strong>
+        </div>
+
+        <div>
+          <span>High</span>
+          <strong id="high">0</strong>
+        </div>
+
+        <div>
+          <span>Nominal</span>
+          <strong id="nominal">0</strong>
+        </div>
+
+        <div>
+          <span>Low</span>
+          <strong id="low">0</strong>
+        </div>
+      </section>
+
 
       <section class="panel legend">
         <h2>Legenda</h2>
-        <p><span class="dot high"></span> High</p>
-        <p><span class="dot nominal"></span> Nominal</p>
-        <p><span class="dot low"></span> Low</p>
-      </section>
 
-      <section class="panel">
-        <p class="source">
-          Sumber data: NASA FIRMS. Data hotspot adalah deteksi satelit dan bukan
-          bukti pasti bahwa seluruh titik merupakan kebakaran aktif.
+        <p>
+          <span class="dot high"></span>
+          High
+        </p>
+
+        <p>
+          <span class="dot nominal"></span>
+          Nominal
+        </p>
+
+        <p>
+          <span class="dot low"></span>
+          Low
+        </p>
+
+        <p>
+          🟢 TNS Boundary
+        </p>
+
+        <p>
+          🔵 KML / KMZ Upload
+        </p>
+
+        <p>
+          📍 Lokasi GPS
         </p>
       </section>
+
+
+      <section class="panel">
+        <h2>Sumber Data</h2>
+
+        <p class="source">
+          Hotspot:
+          NASA FIRMS
+        </p>
+
+        <p class="source">
+          Basemap:
+          OpenStreetMap
+        </p>
+
+        <p class="source">
+          Boundary:
+          TNS Boundary
+        </p>
+      </section>
+
     </aside>
+
 
     <section class="map-wrap">
       <div id="map"></div>
-      <div id="popup" class="popup" hidden>
-        <button id="popupClose">×</button>
-        <div id="popupContent"></div>
-      </div>
     </section>
+
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/ol@10.6.1/dist/ol.js"></script>
-  <script src="js/app.js"></script>
+
+  <!--
+    JSZip digunakan untuk membaca KMZ langsung
+    di browser. Tidak ada upload file ke server.
+  -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"
+  ></script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"
+  ></script>
+
+  <script
+    src="js/app.js"
+  ></script>
+
 </body>
 </html>
