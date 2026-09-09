@@ -73,32 +73,74 @@ map.addLayer(provinsiLayer);
 
 async function loadProvinsi(){
 
-  try{
-
+  try {
 
     const response = await fetch(
       "data/provinsi.geojson"
     );
 
 
-    const geojson = await response.json();
+    const data = await response.json();
 
 
     const format = new ol.format.GeoJSON();
 
 
-    const features = format.readFeatures(
-      geojson,
-      {
-        featureProjection:"EPSG:3857"
-      }
-    );
+    let features;
+
+
+    // Jika sudah GeoJSON standar
+    if(data.type){
+
+      features = format.readFeatures(
+        data,
+        {
+          featureProjection:"EPSG:3857"
+        }
+      );
+
+    }
+
+
+    // Jika format ArcGIS
+    else if(data.features){
+
+
+      const geojson = {
+        type:"FeatureCollection",
+        features:data.features.map(f=>({
+
+          type:"Feature",
+
+          geometry:f.geometry,
+
+          properties:f.attributes
+
+        }))
+      };
+
+
+      features = format.readFeatures(
+        geojson,
+        {
+          featureProjection:"EPSG:3857"
+        }
+      );
+
+    }
 
 
     provinsiSource.addFeatures(features);
 
 
+    console.log(
+      "Provinsi loaded:",
+      features.length
+    );
+
+
   }
+
 
   catch(error){
 
@@ -109,10 +151,7 @@ async function loadProvinsi(){
 
   }
 
-}
-
-
-loadProvinsi();
+}loadProvinsi();
 
 let allFeatures = [];
 
