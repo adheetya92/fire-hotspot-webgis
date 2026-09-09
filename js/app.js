@@ -1,6 +1,6 @@
 // ============================================================
 // FIRE HOTSPOT WEBGIS
-// OpenLayers + NASA FIRMS + TNS Boundary + GPS
+// OpenLayers + NASA FIRMS + Batas Administrasi Indonesia
 // ============================================================
 
 // ------------------------------------------------------------
@@ -61,8 +61,6 @@ const hotspotSource = new VectorSource();
 const hotspotLayer = new VectorLayer({
   source: hotspotSource,
 
-  zIndex: 100,
-
   style: function (feature) {
 
     const confidence =
@@ -106,23 +104,54 @@ const hotspotLayer = new VectorLayer({
 
 
 // ============================================================
-// LAYER TNS BOUNDARY
+// LAYER PROVINSI
 // ============================================================
 
-const tnsSource = new VectorSource();
+const provinsiSource = new VectorSource();
 
-const tnsLayer = new VectorLayer({
-  source: tnsSource,
-  zIndex: 10,
+const provinsiLayer = new VectorLayer({
+
+  source: provinsiSource,
+
   style: new Style({
+
     fill: new Fill({
-      color: "rgba(34, 197, 94, 0.12)"
+      color: "rgba(0, 0, 0, 0)"
     }),
+
     stroke: new Stroke({
-      color: "#16a34a",
-      width: 2
+      color: "#2563eb",
+      width: 1.5
     })
+
   })
+
+});
+
+
+// ============================================================
+// LAYER KABUPATEN
+// ============================================================
+
+const kabupatenSource = new VectorSource();
+
+const kabupatenLayer = new VectorLayer({
+
+  source: kabupatenSource,
+
+  style: new Style({
+
+    fill: new Fill({
+      color: "rgba(0, 0, 0, 0)"
+    }),
+
+    stroke: new Stroke({
+      color: "#64748b",
+      width: 1
+    })
+
+  })
+
 });
 
 
@@ -138,7 +167,9 @@ const map = new Map({
 
     baseLayer,
 
-    tnsLayer,
+    kabupatenLayer,
+
+    provinsiLayer,
 
     hotspotLayer
 
@@ -909,79 +940,148 @@ async function loadHotspots() {
 
 
 // ============================================================
-// LOAD TNS BOUNDARY
+// LOAD ADMINISTRATIVE GEOJSON
 // ============================================================
 
-async function loadTNSBoundary() {
+async function loadAdminLayer(
+  url,
+  vectorSource,
+  layerName
+) {
 
   try {
 
-    const response = await fetch(
-      `data/TNS-boundary.geojson?ts=${Date.now()}`,
-      {
-        cache: "no-store"
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const geojson = await response.json();
-    const format = new ol.format.GeoJSON();
-    let features = [];
-
-    if (geojson.type === "FeatureCollection") {
-
-      features = format.readFeatures(geojson, {
-        dataProjection: "EPSG:4326",
-        featureProjection: "EPSG:3857"
-      });
-
-    } else if (geojson.type === "Feature") {
-
-      features = [
-        format.readFeature(geojson, {
-          dataProjection: "EPSG:4326",
-          featureProjection: "EPSG:3857"
-        })
-      ];
-
-    } else {
-      throw new Error(
-        "Format GeoJSON TNS tidak valid"
-      );
-    }
-
-    tnsSource.clear();
-    tnsSource.addFeatures(features);
-
-    console.log(
-      "TNS Boundary berhasil dimuat:",
-      features.length
-    );
-
-    if (features.length > 0) {
-
-      map.getView().fit(
-        tnsSource.getExtent(),
+    const response =
+      await fetch(
+        `${url}?ts=${Date.now()}`,
         {
-          padding: [50, 50, 50, 50],
-          duration: 1000,
-          maxZoom: 13
+          cache: "no-store"
         }
       );
 
+
+    if (!response.ok) {
+
+      throw new Error(
+        `HTTP ${response.status}`
+      );
+
     }
 
-  } catch (error) {
+
+    const geojson =
+      await response.json();
+
+
+    const format =
+      new ol.format.GeoJSON();
+
+
+    let features = [];
+
+
+    // FeatureCollection
+
+    if (
+      geojson.type ===
+      "FeatureCollection"
+    ) {
+
+      features =
+        format.readFeatures(
+          geojson,
+          {
+            featureProjection:
+              "EPSG:3857"
+          }
+        );
+
+    }
+
+    // Feature tunggal
+
+    else if (
+      geojson.type ===
+      "Feature"
+    ) {
+
+      features = [
+
+        format.readFeature(
+          geojson,
+          {
+            featureProjection:
+              "EPSG:3857"
+          }
+        )
+
+      ];
+
+    }
+
+    else {
+
+      throw new Error(
+        "Unsupported GeoJSON type: " +
+        geojson.type
+      );
+
+    }
+
+
+    vectorSource.clear();
+
+    vectorSource.addFeatures(
+      features
+    );
+
+
+    console.log(
+      `${layerName} berhasil dimuat:`,
+      features.length
+    );
+
+
+  }
+
+  catch (error) {
 
     console.error(
-      "Gagal memuat TNS Boundary:",
+      `Gagal load ${layerName}:`,
       error
     );
 
   }
+
+}
+
+
+// ============================================================
+// LOAD PROVINSI
+// ============================================================
+
+function loadProvinsi() {
+
+  return loadAdminLayer(
+    "data/provinsi.geojson",
+    provinsiSource,
+    "provinsi"
+  );
+
+}
+
+
+// ============================================================
+// LOAD KABUPATEN
+// ============================================================
+
+function loadKabupaten() {
+
+  return loadAdminLayer(
+    "data/kabupaten.geojson",
+    kabupatenSource,
+    "kabupaten"
+  );
 
 }
 
@@ -1065,7 +1165,13 @@ if (resetButton) {
 
 loadHotspots();
 
-loadTNSBoundary();
+
+// Layer administrasi hanya dimuat
+// jika file tersedia.
+
+loadProvinsi();
+
+loadKabupaten();
 
 
 // ============================================================
@@ -1081,306 +1187,12 @@ console.log(
 );
 
 console.log(
-  "🟢 Layer TNS Boundary aktif"
+  "🗺️ Layer provinsi aktif"
 );
 
-// ============================================================
-// UPLOAD KML / KMZ DARI HALAMAN WEB
-// File diproses langsung di browser, tidak dikirim ke server.
-// Membutuhkan JSZip yang dimuat dari index.html.
-// ============================================================
-
-const uploadedLayers = new Map();
-const kmlFileInput = document.getElementById("kmlFileInput");
-const uploadStatus = document.getElementById("uploadStatus");
-const uploadedLayerList = document.getElementById("uploadedLayerList");
-
-function setUploadStatus(message, type = "") {
-  if (!uploadStatus) return;
-
-  uploadStatus.textContent = message;
-  uploadStatus.className = "upload-status";
-
-  if (type) {
-    uploadStatus.classList.add(type);
-  }
-}
-
-function getFileExtension(fileName) {
-  const parts = String(fileName || "").toLowerCase().split(".");
-  return parts.length > 1 ? parts.pop() : "";
-}
-
-function safeLayerName(fileName) {
-  return String(fileName || "Layer")
-    .replace(/\.(kml|kmz)$/i, "")
-    .trim() || "Layer";
-}
-
-function createUploadLayerStyle() {
-  return new Style({
-    fill: new Fill({
-      color: "rgba(59, 130, 246, 0.10)"
-    }),
-    stroke: new Stroke({
-      color: "#2563eb",
-      width: 2
-    }),
-    image: new CircleStyle({
-      radius: 5,
-      fill: new Fill({
-        color: "#2563eb"
-      }),
-      stroke: new Stroke({
-        color: "#ffffff",
-        width: 1
-      })
-    })
-  });
-}
-
-function refreshUploadedLayerList() {
-  if (!uploadedLayerList) return;
-
-  uploadedLayerList.innerHTML = "";
-
-  if (uploadedLayers.size === 0) {
-    const empty = document.createElement("div");
-    empty.className = "upload-empty";
-    empty.textContent = "Belum ada layer yang di-upload.";
-    uploadedLayerList.appendChild(empty);
-    return;
-  }
-
-  uploadedLayers.forEach((item, key) => {
-    const row = document.createElement("div");
-    row.className = "uploaded-layer-row";
-
-    const left = document.createElement("label");
-    left.className = "uploaded-layer-name";
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = item.layer.getVisible();
-
-    checkbox.addEventListener("change", function () {
-      item.layer.setVisible(checkbox.checked);
-    });
-
-    const name = document.createElement("span");
-    name.textContent = item.name;
-
-    left.appendChild(checkbox);
-    left.appendChild(name);
-
-    const removeButton = document.createElement("button");
-    removeButton.type = "button";
-    removeButton.className = "upload-remove-button";
-    removeButton.textContent = "Hapus";
-    removeButton.title = `Hapus ${item.name}`;
-
-    removeButton.addEventListener("click", function () {
-      map.removeLayer(item.layer);
-      uploadedLayers.delete(key);
-      refreshUploadedLayerList();
-
-      if (uploadedLayers.size === 0) {
-        setUploadStatus("Semua layer upload telah dihapus.");
-      } else {
-        setUploadStatus(`Layer "${item.name}" dihapus.`);
-      }
-    });
-
-    row.appendChild(left);
-    row.appendChild(removeButton);
-    uploadedLayerList.appendChild(row);
-  });
-}
-
-async function readKMLTextFromFile(file) {
-  const extension = getFileExtension(file.name);
-
-  if (extension === "kml") {
-    return await file.text();
-  }
-
-  if (extension !== "kmz") {
-    throw new Error("Format file tidak didukung. Gunakan KML atau KMZ.");
-  }
-
-  if (typeof JSZip === "undefined") {
-    throw new Error("Library JSZip belum tersedia.");
-  }
-
-  const zip = await JSZip.loadAsync(await file.arrayBuffer());
-
-  const names = Object.keys(zip.files);
-
-  // Prioritaskan doc.kml di root, lalu file .kml lainnya.
-  const kmlName =
-    names.find(name => !zip.files[name].dir && name.toLowerCase() === "doc.kml") ||
-    names.find(name => !zip.files[name].dir && name.toLowerCase().endsWith(".kml"));
-
-  if (!kmlName) {
-    throw new Error("KMZ tidak berisi file KML.");
-  }
-
-  return await zip.files[kmlName].async("text");
-}
-
-function readKMLFeatures(kmlText) {
-  const format = new ol.format.KML({
-    extractStyles: true,
-    showPointNames: true
-  });
-
-  const features = format.readFeatures(kmlText, {
-    dataProjection: "EPSG:4326",
-    featureProjection: "EPSG:3857"
-  });
-
-  if (!features.length) {
-    throw new Error("KML tidak memiliki objek yang dapat ditampilkan.");
-  }
-
-  return features;
-}
-
-async function addKMLKMZLayer(file) {
-  const kmlText = await readKMLTextFromFile(file);
-  const features = readKMLFeatures(kmlText);
-
-  const source = new VectorSource({
-    features: features
-  });
-
-  const layer = new VectorLayer({
-    source: source,
-    zIndex: 50,
-    style: createUploadLayerStyle()
-  });
-
-  const layerName = safeLayerName(file.name);
-  layer.set("uploadFileName", file.name);
-  layer.set("uploadLayerName", layerName);
-
-  map.addLayer(layer);
-
-  const key = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-  uploadedLayers.set(key, {
-    name: layerName,
-    fileName: file.name,
-    layer: layer,
-    featureCount: features.length
-  });
-
-  refreshUploadedLayerList();
-
-  const extent = source.getExtent();
-
-  if (
-    extent &&
-    extent.length === 4 &&
-    !ol.extent.isEmpty(extent)
-  ) {
-    map.getView().fit(extent, {
-      padding: [60, 60, 60, 60],
-      maxZoom: 15,
-      duration: 800
-    });
-  }
-
-  return {
-    name: layerName,
-    featureCount: features.length
-  };
-}
-
-async function handleKMLKMZUpload(event) {
-  const files = Array.from(event.target.files || []);
-
-  if (!files.length) {
-    return;
-  }
-
-  const validFiles = files.filter(file => {
-    const ext = getFileExtension(file.name);
-    return ext === "kml" || ext === "kmz";
-  });
-
-  if (!validFiles.length) {
-    setUploadStatus(
-      "Tidak ada file KML/KMZ yang dipilih.",
-      "error"
-    );
-    event.target.value = "";
-    return;
-  }
-
-  setUploadStatus(
-    `Memproses ${validFiles.length} file...`
-  );
-
-  let successCount = 0;
-  const errors = [];
-
-  for (const file of validFiles) {
-    try {
-      const result = await addKMLKMZLayer(file);
-      successCount++;
-
-      console.log(
-        `Layer ${file.name} berhasil dimuat:`,
-        result.featureCount,
-        "feature"
-      );
-    } catch (error) {
-      console.error(
-        `Gagal memuat ${file.name}:`,
-        error
-      );
-
-      errors.push(
-        `${file.name}: ${error.message || error}`
-      );
-    }
-  }
-
-  if (successCount > 0 && errors.length === 0) {
-    setUploadStatus(
-      `${successCount} file berhasil ditampilkan.`,
-      "success"
-    );
-  } else if (successCount > 0 && errors.length > 0) {
-    setUploadStatus(
-      `${successCount} file berhasil, ${errors.length} file gagal.`
-    );
-  } else {
-    setUploadStatus(
-      "Semua file gagal dimuat. Periksa format KML/KMZ.",
-      "error"
-    );
-  }
-
-  if (errors.length) {
-    console.warn("Detail error upload:", errors);
-  }
-
-  // Agar file yang sama dapat dipilih lagi.
-  event.target.value = "";
-}
-
-if (kmlFileInput) {
-  kmlFileInput.addEventListener(
-    "change",
-    handleKMLKMZUpload
-  );
-}
-
-refreshUploadedLayerList();
-
-
+console.log(
+  "🗺️ Layer kabupaten aktif"
+);
 // ============================================================
 // GPS / LOKASI PENGGUNA
 // ============================================================
