@@ -1,10 +1,7 @@
 const {Map, View} = ol;
 const {Tile: TileLayer, Vector: VectorLayer} = ol.layer;
 const {OSM, Vector: VectorSource} = ol.source;
-const {Stroke, Fill, Style} = ol.style;
 const {fromLonLat} = ol.proj;
-const {Point} = ol.geom;
-const {Feature} = ol;
 const {Circle: CircleStyle, Fill, Stroke, Style} = ol.style;
 
 const map = new Map({
