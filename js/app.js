@@ -1193,3 +1193,654 @@ console.log(
 console.log(
   "🗺️ Layer kabupaten aktif"
 );
+// ============================================================
+// GPS / LOKASI PENGGUNA
+// ============================================================
+
+// Source untuk GPS
+const gpsSource = new VectorSource();
+
+
+// Layer GPS
+const gpsLayer = new VectorLayer({
+
+  source: gpsSource,
+
+  zIndex: 1000,
+
+  style: function (feature) {
+
+    const type =
+      feature.get("gpsType");
+
+    // Lingkaran akurasi
+    if (type === "accuracy") {
+
+      return new Style({
+
+        fill: new Fill({
+          color: "rgba(37, 99, 235, 0.12)"
+        }),
+
+        stroke: new Stroke({
+          color: "rgba(37, 99, 235, 0.45)",
+          width: 1
+        })
+
+      });
+
+    }
+
+
+    // Titik GPS
+    return new Style({
+
+      image: new CircleStyle({
+
+        radius: 8,
+
+        fill: new Fill({
+          color: "#2563eb"
+        }),
+
+        stroke: new Stroke({
+          color: "#ffffff",
+          width: 3
+        })
+
+      })
+
+    });
+
+  }
+
+});
+
+
+// Tambahkan layer GPS ke map
+map.addLayer(gpsLayer);
+
+
+// ============================================================
+// VARIABEL GPS
+// ============================================================
+
+let gpsWatchId = null;
+
+let gpsCoordinate = null;
+
+
+// ============================================================
+// ELEMENT HTML
+// ============================================================
+
+const gpsButton =
+  document.getElementById(
+    "gpsButton"
+  );
+
+
+const gpsFollowButton =
+  document.getElementById(
+    "gpsFollowButton"
+  );
+
+
+const gpsStatus =
+  document.getElementById(
+    "gpsStatus"
+  );
+
+
+const gpsInfo =
+  document.getElementById(
+    "gpsInfo"
+  );
+
+
+const gpsLatitude =
+  document.getElementById(
+    "gpsLatitude"
+  );
+
+
+const gpsLongitude =
+  document.getElementById(
+    "gpsLongitude"
+  );
+
+
+const gpsAccuracy =
+  document.getElementById(
+    "gpsAccuracy"
+  );
+
+
+// ============================================================
+// UPDATE STATUS
+// ============================================================
+
+function setGPSStatus(
+  message,
+  type = ""
+) {
+
+  if (!gpsStatus) {
+    return;
+  }
+
+  gpsStatus.textContent =
+    message;
+
+  gpsStatus.className =
+    "gps-status";
+
+  if (type) {
+
+    gpsStatus.classList.add(
+      type
+    );
+
+  }
+
+}
+
+
+// ============================================================
+// UPDATE GPS INFORMATION
+// ============================================================
+
+function updateGPSInfo(
+  latitude,
+  longitude,
+  accuracy
+) {
+
+  if (gpsLatitude) {
+
+    gpsLatitude.textContent =
+      Number(latitude)
+        .toFixed(6);
+
+  }
+
+
+  if (gpsLongitude) {
+
+    gpsLongitude.textContent =
+      Number(longitude)
+        .toFixed(6);
+
+  }
+
+
+  if (gpsAccuracy) {
+
+    gpsAccuracy.textContent =
+      `${Math.round(accuracy)} meter`;
+
+  }
+
+
+  if (gpsInfo) {
+
+    gpsInfo.hidden = false;
+
+  }
+
+}
+
+
+// ============================================================
+// UPDATE GPS MARKER
+// ============================================================
+
+function updateGPSMarker(
+  latitude,
+  longitude,
+  accuracy
+) {
+
+  const coordinate =
+    fromLonLat([
+      longitude,
+      latitude
+    ]);
+
+
+  gpsCoordinate =
+    coordinate;
+
+
+  // Hapus marker GPS lama
+  gpsSource.clear();
+
+
+  // ========================================================
+  // LINGKARAN AKURASI
+  // ========================================================
+
+  const accuracyGeometry =
+    new ol.geom.Circle(
+      coordinate,
+      accuracy
+    );
+
+
+  const accuracyFeature =
+    new Feature(
+      accuracyGeometry
+    );
+
+
+  accuracyFeature.set(
+    "gpsType",
+    "accuracy"
+  );
+
+
+  gpsSource.addFeature(
+    accuracyFeature
+  );
+
+
+  // ========================================================
+  // TITIK GPS
+  // ========================================================
+
+  const positionFeature =
+    new Feature(
+      new Point(
+        coordinate
+      )
+    );
+
+
+  positionFeature.set(
+    "gpsType",
+    "position"
+  );
+
+
+  gpsSource.addFeature(
+    positionFeature
+  );
+
+}
+
+
+// ============================================================
+// GPS POSITION SUCCESS
+// ============================================================
+
+function handleGPSPosition(
+  position,
+  centerMap = false
+) {
+
+  const latitude =
+    position.coords.latitude;
+
+
+  const longitude =
+    position.coords.longitude;
+
+
+  const accuracy =
+    position.coords.accuracy;
+
+
+  updateGPSInfo(
+    latitude,
+    longitude,
+    accuracy
+  );
+
+
+  updateGPSMarker(
+    latitude,
+    longitude,
+    accuracy
+  );
+
+
+  setGPSStatus(
+    `GPS aktif • akurasi ±${Math.round(accuracy)} meter`,
+    "success"
+  );
+
+
+  // ========================================================
+  // PUSATKAN PETA
+  // ========================================================
+
+  if (
+    centerMap &&
+    gpsCoordinate
+  ) {
+
+    map.getView().animate({
+
+      center:
+        gpsCoordinate,
+
+      zoom: Math.max(
+        map.getView().getZoom(),
+        14
+      ),
+
+      duration: 1000
+
+    });
+
+  }
+
+}
+
+
+// ============================================================
+// GPS ERROR
+// ============================================================
+
+function handleGPSError(
+  error
+) {
+
+  let message =
+    "Gagal mendapatkan lokasi GPS.";
+
+
+  if (
+    error.code ===
+    error.PERMISSION_DENIED
+  ) {
+
+    message =
+      "Izin lokasi ditolak. Silakan izinkan lokasi pada browser.";
+
+  }
+
+
+  else if (
+    error.code ===
+    error.POSITION_UNAVAILABLE
+  ) {
+
+    message =
+      "Lokasi GPS tidak tersedia.";
+
+  }
+
+
+  else if (
+    error.code ===
+    error.TIMEOUT
+  ) {
+
+    message =
+      "Waktu pencarian GPS habis. Coba lagi.";
+
+  }
+
+
+  setGPSStatus(
+    message,
+    "error"
+  );
+
+
+  console.error(
+    "GPS error:",
+    error
+  );
+
+}
+
+
+// ============================================================
+// CHECK GEOLOCATION SUPPORT
+// ============================================================
+
+function checkGPSSupport() {
+
+  if (
+    !navigator.geolocation
+  ) {
+
+    setGPSStatus(
+      "Browser tidak mendukung GPS/geolocation.",
+      "error"
+    );
+
+    if (gpsButton) {
+      gpsButton.disabled = true;
+    }
+
+    if (gpsFollowButton) {
+      gpsFollowButton.disabled = true;
+    }
+
+    return false;
+
+  }
+
+
+  return true;
+
+}
+
+
+// ============================================================
+// GET LOCATION ONCE
+// ============================================================
+
+function getCurrentGPS() {
+
+  if (!checkGPSSupport()) {
+    return;
+  }
+
+
+  setGPSStatus(
+    "Mencari lokasi GPS..."
+  );
+
+
+  navigator.geolocation.getCurrentPosition(
+
+    function (position) {
+
+      handleGPSPosition(
+        position,
+        true
+      );
+
+    },
+
+    function (error) {
+
+      handleGPSError(
+        error
+      );
+
+    },
+
+    {
+
+      enableHighAccuracy: true,
+
+      timeout: 15000,
+
+      maximumAge: 0
+
+    }
+
+  );
+
+}
+
+
+// ============================================================
+// START GPS FOLLOW
+// ============================================================
+
+function startGPSFollow() {
+
+  if (!checkGPSSupport()) {
+    return;
+  }
+
+
+  // Jika sudah aktif, jangan membuat watcher baru
+  if (
+    gpsWatchId !== null
+  ) {
+
+    return;
+
+  }
+
+
+  setGPSStatus(
+    "Mengikuti lokasi GPS..."
+  );
+
+
+  gpsWatchId =
+    navigator.geolocation.watchPosition(
+
+      function (position) {
+
+        handleGPSPosition(
+          position,
+          true
+        );
+
+      },
+
+      function (error) {
+
+        handleGPSError(
+          error
+        );
+
+      },
+
+      {
+
+        enableHighAccuracy: true,
+
+        timeout: 15000,
+
+        maximumAge: 2000
+
+      }
+
+    );
+
+
+  if (gpsFollowButton) {
+
+    gpsFollowButton.classList.add(
+      "active"
+    );
+
+    gpsFollowButton.textContent =
+      "⏹ Berhenti Ikuti Lokasi";
+
+  }
+
+}
+
+
+// ============================================================
+// STOP GPS FOLLOW
+// ============================================================
+
+function stopGPSFollow() {
+
+  if (
+    gpsWatchId !== null
+  ) {
+
+    navigator.geolocation.clearWatch(
+      gpsWatchId
+    );
+
+    gpsWatchId = null;
+
+  }
+
+
+  if (gpsFollowButton) {
+
+    gpsFollowButton.classList.remove(
+      "active"
+    );
+
+    gpsFollowButton.textContent =
+      "🎯 Ikuti Lokasi";
+
+  }
+
+
+  setGPSStatus(
+    "Pelacakan GPS dihentikan."
+  );
+
+}
+
+
+// ============================================================
+// BUTTON: LOKASI SAYA
+// ============================================================
+
+if (gpsButton) {
+
+  gpsButton.addEventListener(
+    "click",
+    function () {
+
+      getCurrentGPS();
+
+    }
+  );
+
+}
+
+
+// ============================================================
+// BUTTON: IKUTI LOKASI
+// ============================================================
+
+if (gpsFollowButton) {
+
+  gpsFollowButton.addEventListener(
+    "click",
+    function () {
+
+      if (
+        gpsWatchId === null
+      ) {
+
+        startGPSFollow();
+
+      }
+
+      else {
+
+        stopGPSFollow();
+
+      }
+
+    }
+  );
+
+}
+
+
+// ============================================================
+// INITIAL GPS CHECK
+// ============================================================
+
+checkGPSSupport();
