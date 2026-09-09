@@ -20,6 +20,60 @@
     <aside class="sidebar">
       <section class="panel">
         <h2>Filter</h2>
+        <!-- =====================================================
+     GPS / LOKASI PENGGUNA
+     ===================================================== -->
+
+<div class="panel gps-panel">
+
+  <h2>📍 Lokasi Saya</h2>
+
+  <button
+    id="gpsButton"
+    type="button"
+  >
+    📍 Dapatkan Lokasi Saya
+  </button>
+
+  <button
+    id="gpsFollowButton"
+    type="button"
+    class="gps-follow-button"
+  >
+    🎯 Ikuti Lokasi
+  </button>
+
+  <div
+    id="gpsStatus"
+    class="gps-status"
+  >
+    GPS belum digunakan
+  </div>
+
+  <div
+    id="gpsInfo"
+    class="gps-info"
+    hidden
+  >
+
+    <div>
+      <span>Latitude</span>
+      <strong id="gpsLatitude">-</strong>
+    </div>
+
+    <div>
+      <span>Longitude</span>
+      <strong id="gpsLongitude">-</strong>
+    </div>
+
+    <div>
+      <span>Akurasi</span>
+      <strong id="gpsAccuracy">-</strong>
+    </div>
+
+  </div>
+
+</div>
         <label for="confidence">Confidence</label>
         <select id="confidence">
           <option value="all">Semua</option>
