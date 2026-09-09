@@ -1,6 +1,7 @@
 const {Map, View} = ol;
 const {Tile: TileLayer, Vector: VectorLayer} = ol.layer;
 const {OSM, Vector: VectorSource} = ol.source;
+const {Stroke, Fill, Style} = ol.style;
 const {fromLonLat} = ol.proj;
 const {Point} = ol.geom;
 const {Feature} = ol;
@@ -36,6 +37,85 @@ const hotspotLayer = new VectorLayer({
   }
 });
 map.addLayer(hotspotLayer);
+// ===============================
+// LAYER BATAS PROVINSI
+// ===============================
+
+
+const provinsiSource = new VectorSource();
+
+
+const provinsiLayer = new VectorLayer({
+
+  source: provinsiSource,
+
+  style: new Style({
+
+    fill: new Fill({
+
+      color: "rgba(0,0,0,0)"
+
+    }),
+
+    stroke: new Stroke({
+
+      color: "#2563eb",
+
+      width: 1.5
+
+    })
+
+  })
+
+});
+
+
+map.addLayer(provinsiLayer);
+
+
+
+async function loadProvinsi(){
+
+  try{
+
+
+    const response = await fetch(
+      "data/provinsi.geojson"
+    );
+
+
+    const geojson = await response.json();
+
+
+    const format = new ol.format.GeoJSON();
+
+
+    const features = format.readFeatures(
+      geojson,
+      {
+        featureProjection:"EPSG:3857"
+      }
+    );
+
+
+    provinsiSource.addFeatures(features);
+
+
+  }
+
+  catch(error){
+
+    console.error(
+      "Gagal load provinsi",
+      error
+    );
+
+  }
+
+}
+
+
+loadProvinsi();
 
 let allFeatures = [];
 
