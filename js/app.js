@@ -3,11 +3,9 @@
 // OpenLayers + NASA FIRMS + TNS Boundary + GPS
 // ============================================================
 
-
-// ============================================================
+// ------------------------------------------------------------
 // IMPORT OPENLAYERS
-// ============================================================
-
+// ------------------------------------------------------------
 const { Map, View, Feature } = ol;
 
 const {
@@ -61,11 +59,7 @@ const hotspotSource = new VectorSource();
 // ============================================================
 
 const hotspotLayer = new VectorLayer({
-
   source: hotspotSource,
-
-  // Hotspot di atas TNS
-  zIndex: 100,
 
   style: function (feature) {
 
@@ -91,7 +85,6 @@ const hotspotLayer = new VectorLayer({
     return new Style({
 
       image: new CircleStyle({
-
         radius: 5,
 
         fill: new Fill({
@@ -102,13 +95,11 @@ const hotspotLayer = new VectorLayer({
           color: "#ffffff",
           width: 1
         })
-
       })
 
     });
 
   }
-
 });
 
 
@@ -119,25 +110,17 @@ const hotspotLayer = new VectorLayer({
 const tnsSource = new VectorSource();
 
 const tnsLayer = new VectorLayer({
-
   source: tnsSource,
-
-  // TNS di bawah hotspot
   zIndex: 10,
-
   style: new Style({
-
     fill: new Fill({
       color: "rgba(34, 197, 94, 0.12)"
     }),
-
     stroke: new Stroke({
       color: "#16a34a",
       width: 2
     })
-
   })
-
 });
 
 
@@ -153,10 +136,10 @@ const map = new Map({
 
     baseLayer,
 
-    // TNS Boundary
-    tnsLayer,
+    kabupatenLayer,
 
-    // Hotspot
+    provinsiLayer,
+
     hotspotLayer
 
   ],
@@ -209,9 +192,7 @@ if (!popup) {
 }
 
 
-// ============================================================
-// POPUP CONTENT
-// ============================================================
+// Pastikan popupContent tersedia
 
 let popupContent =
   document.getElementById("popupContent");
@@ -504,13 +485,14 @@ function showHotspotPopup(
 
 
 // ============================================================
-// CLOSE POPUP WHEN MOVING MAP
+// CLOSE POPUP WHEN CLICKING MAP
 // ============================================================
 
 map.on(
   "movestart",
   function () {
 
+    // Tutup popup saat peta digeser
     popupOverlay.setPosition(
       undefined
     );
@@ -540,7 +522,7 @@ map.on(
         layer
       ) {
 
-        // Hanya hotspot yang dapat diklik
+        // Hanya hotspotLayer yang diproses
         if (
           layer !== hotspotLayer
         ) {
@@ -561,7 +543,6 @@ map.on(
       },
 
       {
-
         hitTolerance: 8,
 
         layerFilter:
@@ -831,6 +812,9 @@ async function loadHotspots() {
       new ol.format.GeoJSON();
 
 
+    // Mendukung FeatureCollection
+    // maupun Feature tunggal
+
     if (
       geojson.type ===
       "FeatureCollection"
@@ -840,7 +824,6 @@ async function loadHotspots() {
         format.readFeatures(
           geojson,
           {
-            dataProjection: "EPSG:4326",
             featureProjection:
               "EPSG:3857"
           }
@@ -858,7 +841,6 @@ async function loadHotspots() {
         format.readFeature(
           geojson,
           {
-            dataProjection: "EPSG:4326",
             featureProjection:
               "EPSG:3857"
           }
@@ -934,143 +916,65 @@ async function loadTNSBoundary() {
 
   try {
 
-    const response =
-      await fetch(
-        `data/TNS-boundary.geojson?ts=${Date.now()}`,
-        {
-          cache: "no-store"
-        }
-      );
-
+    const response = await fetch(
+      `data/TNS-boundary.geojson?ts=${Date.now()}`,
+      {
+        cache: "no-store"
+      }
+    );
 
     if (!response.ok) {
-
-      throw new Error(
-        `HTTP ${response.status}`
-      );
-
+      throw new Error(`HTTP ${response.status}`);
     }
 
-
-    const geojson =
-      await response.json();
-
-
-    const format =
-      new ol.format.GeoJSON();
-
-
+    const geojson = await response.json();
+    const format = new ol.format.GeoJSON();
     let features = [];
 
+    if (geojson.type === "FeatureCollection") {
 
-    // --------------------------------------------------------
-    // FeatureCollection
-    // --------------------------------------------------------
+      features = format.readFeatures(geojson, {
+        dataProjection: "EPSG:4326",
+        featureProjection: "EPSG:3857"
+      });
 
-    if (
-      geojson.type ===
-      "FeatureCollection"
-    ) {
-
-      features =
-        format.readFeatures(
-          geojson,
-          {
-            dataProjection:
-              "EPSG:4326",
-
-            featureProjection:
-              "EPSG:3857"
-          }
-        );
-
-    }
-
-
-    // --------------------------------------------------------
-    // Feature tunggal
-    // --------------------------------------------------------
-
-    else if (
-      geojson.type ===
-      "Feature"
-    ) {
+    } else if (geojson.type === "Feature") {
 
       features = [
-
-        format.readFeature(
-          geojson,
-          {
-            dataProjection:
-              "EPSG:4326",
-
-            featureProjection:
-              "EPSG:3857"
-          }
-        )
-
+        format.readFeature(geojson, {
+          dataProjection: "EPSG:4326",
+          featureProjection: "EPSG:3857"
+        })
       ];
 
-    }
-
-
-    else {
-
+    } else {
       throw new Error(
         "Format GeoJSON TNS tidak valid"
       );
-
     }
 
-
-    // --------------------------------------------------------
-    // Masukkan ke source TNS
-    // --------------------------------------------------------
-
     tnsSource.clear();
-
-    tnsSource.addFeatures(
-      features
-    );
-
+    tnsSource.addFeatures(features);
 
     console.log(
       "TNS Boundary berhasil dimuat:",
       features.length
     );
 
-
-    // --------------------------------------------------------
-    // Zoom otomatis ke TNS
-    // --------------------------------------------------------
-
-    if (
-      features.length > 0
-    ) {
+    if (features.length > 0) {
 
       map.getView().fit(
         tnsSource.getExtent(),
         {
-
-          padding: [
-            50,
-            50,
-            50,
-            50
-          ],
-
+          padding: [50, 50, 50, 50],
           duration: 1000,
-
           maxZoom: 13
-
         }
       );
 
     }
 
-  }
-
-  catch (error) {
+  } catch (error) {
 
     console.error(
       "Gagal memuat TNS Boundary:",
@@ -1091,7 +995,6 @@ const confidenceSelect =
     "confidence"
   );
 
-
 if (confidenceSelect) {
 
   confidenceSelect.addEventListener(
@@ -1106,7 +1009,6 @@ const satelliteSelect =
   document.getElementById(
     "satellite"
   );
-
 
 if (satelliteSelect) {
 
@@ -1126,7 +1028,6 @@ const resetButton =
   document.getElementById(
     "reset"
   );
-
 
 if (resetButton) {
 
@@ -1183,6 +1084,302 @@ console.log(
   "🟢 Layer TNS Boundary aktif"
 );
 
+// ============================================================
+// UPLOAD KML / KMZ DARI HALAMAN WEB
+// File diproses langsung di browser, tidak dikirim ke server.
+// Membutuhkan JSZip yang dimuat dari index.html.
+// ============================================================
+
+const uploadedLayers = new Map();
+const kmlFileInput = document.getElementById("kmlFileInput");
+const uploadStatus = document.getElementById("uploadStatus");
+const uploadedLayerList = document.getElementById("uploadedLayerList");
+
+function setUploadStatus(message, type = "") {
+  if (!uploadStatus) return;
+
+  uploadStatus.textContent = message;
+  uploadStatus.className = "upload-status";
+
+  if (type) {
+    uploadStatus.classList.add(type);
+  }
+}
+
+function getFileExtension(fileName) {
+  const parts = String(fileName || "").toLowerCase().split(".");
+  return parts.length > 1 ? parts.pop() : "";
+}
+
+function safeLayerName(fileName) {
+  return String(fileName || "Layer")
+    .replace(/\.(kml|kmz)$/i, "")
+    .trim() || "Layer";
+}
+
+function createUploadLayerStyle() {
+  return new Style({
+    fill: new Fill({
+      color: "rgba(59, 130, 246, 0.10)"
+    }),
+    stroke: new Stroke({
+      color: "#2563eb",
+      width: 2
+    }),
+    image: new CircleStyle({
+      radius: 5,
+      fill: new Fill({
+        color: "#2563eb"
+      }),
+      stroke: new Stroke({
+        color: "#ffffff",
+        width: 1
+      })
+    })
+  });
+}
+
+function refreshUploadedLayerList() {
+  if (!uploadedLayerList) return;
+
+  uploadedLayerList.innerHTML = "";
+
+  if (uploadedLayers.size === 0) {
+    const empty = document.createElement("div");
+    empty.className = "upload-empty";
+    empty.textContent = "Belum ada layer yang di-upload.";
+    uploadedLayerList.appendChild(empty);
+    return;
+  }
+
+  uploadedLayers.forEach((item, key) => {
+    const row = document.createElement("div");
+    row.className = "uploaded-layer-row";
+
+    const left = document.createElement("label");
+    left.className = "uploaded-layer-name";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = item.layer.getVisible();
+
+    checkbox.addEventListener("change", function () {
+      item.layer.setVisible(checkbox.checked);
+    });
+
+    const name = document.createElement("span");
+    name.textContent = item.name;
+
+    left.appendChild(checkbox);
+    left.appendChild(name);
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "upload-remove-button";
+    removeButton.textContent = "Hapus";
+    removeButton.title = `Hapus ${item.name}`;
+
+    removeButton.addEventListener("click", function () {
+      map.removeLayer(item.layer);
+      uploadedLayers.delete(key);
+      refreshUploadedLayerList();
+
+      if (uploadedLayers.size === 0) {
+        setUploadStatus("Semua layer upload telah dihapus.");
+      } else {
+        setUploadStatus(`Layer "${item.name}" dihapus.`);
+      }
+    });
+
+    row.appendChild(left);
+    row.appendChild(removeButton);
+    uploadedLayerList.appendChild(row);
+  });
+}
+
+async function readKMLTextFromFile(file) {
+  const extension = getFileExtension(file.name);
+
+  if (extension === "kml") {
+    return await file.text();
+  }
+
+  if (extension !== "kmz") {
+    throw new Error("Format file tidak didukung. Gunakan KML atau KMZ.");
+  }
+
+  if (typeof JSZip === "undefined") {
+    throw new Error("Library JSZip belum tersedia.");
+  }
+
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+
+  const names = Object.keys(zip.files);
+
+  // Prioritaskan doc.kml di root, lalu file .kml lainnya.
+  const kmlName =
+    names.find(name => !zip.files[name].dir && name.toLowerCase() === "doc.kml") ||
+    names.find(name => !zip.files[name].dir && name.toLowerCase().endsWith(".kml"));
+
+  if (!kmlName) {
+    throw new Error("KMZ tidak berisi file KML.");
+  }
+
+  return await zip.files[kmlName].async("text");
+}
+
+function readKMLFeatures(kmlText) {
+  const format = new ol.format.KML({
+    extractStyles: true,
+    showPointNames: true
+  });
+
+  const features = format.readFeatures(kmlText, {
+    dataProjection: "EPSG:4326",
+    featureProjection: "EPSG:3857"
+  });
+
+  if (!features.length) {
+    throw new Error("KML tidak memiliki objek yang dapat ditampilkan.");
+  }
+
+  return features;
+}
+
+async function addKMLKMZLayer(file) {
+  const kmlText = await readKMLTextFromFile(file);
+  const features = readKMLFeatures(kmlText);
+
+  const source = new VectorSource({
+    features: features
+  });
+
+  const layer = new VectorLayer({
+    source: source,
+    zIndex: 50,
+    style: createUploadLayerStyle()
+  });
+
+  const layerName = safeLayerName(file.name);
+  layer.set("uploadFileName", file.name);
+  layer.set("uploadLayerName", layerName);
+
+  map.addLayer(layer);
+
+  const key = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  uploadedLayers.set(key, {
+    name: layerName,
+    fileName: file.name,
+    layer: layer,
+    featureCount: features.length
+  });
+
+  refreshUploadedLayerList();
+
+  const extent = source.getExtent();
+
+  if (
+    extent &&
+    extent.length === 4 &&
+    !ol.extent.isEmpty(extent)
+  ) {
+    map.getView().fit(extent, {
+      padding: [60, 60, 60, 60],
+      maxZoom: 15,
+      duration: 800
+    });
+  }
+
+  return {
+    name: layerName,
+    featureCount: features.length
+  };
+}
+
+async function handleKMLKMZUpload(event) {
+  const files = Array.from(event.target.files || []);
+
+  if (!files.length) {
+    return;
+  }
+
+  const validFiles = files.filter(file => {
+    const ext = getFileExtension(file.name);
+    return ext === "kml" || ext === "kmz";
+  });
+
+  if (!validFiles.length) {
+    setUploadStatus(
+      "Tidak ada file KML/KMZ yang dipilih.",
+      "error"
+    );
+    event.target.value = "";
+    return;
+  }
+
+  setUploadStatus(
+    `Memproses ${validFiles.length} file...`
+  );
+
+  let successCount = 0;
+  const errors = [];
+
+  for (const file of validFiles) {
+    try {
+      const result = await addKMLKMZLayer(file);
+      successCount++;
+
+      console.log(
+        `Layer ${file.name} berhasil dimuat:`,
+        result.featureCount,
+        "feature"
+      );
+    } catch (error) {
+      console.error(
+        `Gagal memuat ${file.name}:`,
+        error
+      );
+
+      errors.push(
+        `${file.name}: ${error.message || error}`
+      );
+    }
+  }
+
+  if (successCount > 0 && errors.length === 0) {
+    setUploadStatus(
+      `${successCount} file berhasil ditampilkan.`,
+      "success"
+    );
+  } else if (successCount > 0 && errors.length > 0) {
+    setUploadStatus(
+      `${successCount} file berhasil, ${errors.length} file gagal.`
+    );
+  } else {
+    setUploadStatus(
+      "Semua file gagal dimuat. Periksa format KML/KMZ.",
+      "error"
+    );
+  }
+
+  if (errors.length) {
+    console.warn("Detail error upload:", errors);
+  }
+
+  // Agar file yang sama dapat dipilih lagi.
+  event.target.value = "";
+}
+
+if (kmlFileInput) {
+  kmlFileInput.addEventListener(
+    "change",
+    handleKMLKMZUpload
+  );
+}
+
+refreshUploadedLayerList();
+
 
 // ============================================================
 // GPS / LOKASI PENGGUNA
@@ -1204,23 +1401,17 @@ const gpsLayer = new VectorLayer({
     const type =
       feature.get("gpsType");
 
-
     // Lingkaran akurasi
-    if (
-      type === "accuracy"
-    ) {
+    if (type === "accuracy") {
 
       return new Style({
 
         fill: new Fill({
-          color:
-            "rgba(37, 99, 235, 0.12)"
+          color: "rgba(37, 99, 235, 0.12)"
         }),
 
         stroke: new Stroke({
-          color:
-            "rgba(37, 99, 235, 0.45)",
-
+          color: "rgba(37, 99, 235, 0.45)",
           width: 1
         })
 
@@ -1242,7 +1433,6 @@ const gpsLayer = new VectorLayer({
 
         stroke: new Stroke({
           color: "#ffffff",
-
           width: 3
         })
 
@@ -1327,14 +1517,11 @@ function setGPSStatus(
     return;
   }
 
-
   gpsStatus.textContent =
     message;
 
-
   gpsStatus.className =
     "gps-status";
-
 
   if (type) {
 
@@ -1525,11 +1712,10 @@ function handleGPSPosition(
       center:
         gpsCoordinate,
 
-      zoom:
-        Math.max(
-          map.getView().getZoom(),
-          14
-        ),
+      zoom: Math.max(
+        map.getView().getZoom(),
+        14
+      ),
 
       duration: 1000
 
@@ -1614,22 +1800,13 @@ function checkGPSSupport() {
       "error"
     );
 
-
     if (gpsButton) {
-
-      gpsButton.disabled =
-        true;
-
+      gpsButton.disabled = true;
     }
-
 
     if (gpsFollowButton) {
-
-      gpsFollowButton.disabled =
-        true;
-
+      gpsFollowButton.disabled = true;
     }
-
 
     return false;
 
@@ -1647,12 +1824,8 @@ function checkGPSSupport() {
 
 function getCurrentGPS() {
 
-  if (
-    !checkGPSSupport()
-  ) {
-
+  if (!checkGPSSupport()) {
     return;
-
   }
 
 
@@ -1672,7 +1845,6 @@ function getCurrentGPS() {
 
     },
 
-
     function (error) {
 
       handleGPSError(
@@ -1681,17 +1853,13 @@ function getCurrentGPS() {
 
     },
 
-
     {
 
-      enableHighAccuracy:
-        true,
+      enableHighAccuracy: true,
 
-      timeout:
-        15000,
+      timeout: 15000,
 
-      maximumAge:
-        0
+      maximumAge: 0
 
     }
 
@@ -1706,12 +1874,8 @@ function getCurrentGPS() {
 
 function startGPSFollow() {
 
-  if (
-    !checkGPSSupport()
-  ) {
-
+  if (!checkGPSSupport()) {
     return;
-
   }
 
 
@@ -1742,7 +1906,6 @@ function startGPSFollow() {
 
       },
 
-
       function (error) {
 
         handleGPSError(
@@ -1751,17 +1914,13 @@ function startGPSFollow() {
 
       },
 
-
       {
 
-        enableHighAccuracy:
-          true,
+        enableHighAccuracy: true,
 
-        timeout:
-          15000,
+        timeout: 15000,
 
-        maximumAge:
-          2000
+        maximumAge: 2000
 
       }
 
@@ -1773,7 +1932,6 @@ function startGPSFollow() {
     gpsFollowButton.classList.add(
       "active"
     );
-
 
     gpsFollowButton.textContent =
       "⏹ Berhenti Ikuti Lokasi";
@@ -1797,7 +1955,6 @@ function stopGPSFollow() {
       gpsWatchId
     );
 
-
     gpsWatchId = null;
 
   }
@@ -1808,7 +1965,6 @@ function stopGPSFollow() {
     gpsFollowButton.classList.remove(
       "active"
     );
-
 
     gpsFollowButton.textContent =
       "🎯 Ikuti Lokasi";
