@@ -26,6 +26,17 @@ jobs:
           FIRMS_MAP_KEY: ${{ secrets.FIRMS_MAP_KEY }}
         run: python scripts/fetch_firms.py
 
+        - name: Validate hotspot GeoJSON
+          shell: python
+          run: |
+            import json
+            with open('data/hotspots.geojson', encoding='utf-8') as f:
+                data = json.load(f)
+            count = len(data.get('features', []))
+            if count == 0:
+                raise SystemExit('hotspots.geojson contains 0 features')
+            print(f'Validated hotspot GeoJSON: {count} features')
+
       - name: Commit updated GeoJSON
         run: |
           git config user.name "github-actions[bot]"
