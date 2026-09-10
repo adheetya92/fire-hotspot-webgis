@@ -1,11 +1,13 @@
 // ============================================================
 // FIRE HOTSPOT WEBGIS
-// OpenLayers + NASA FIRMS + Batas Administrasi Indonesia
+// OpenLayers + NASA FIRMS + TNS Boundary + GPS
 // ============================================================
 
-// ------------------------------------------------------------
+
+// ============================================================
 // IMPORT OPENLAYERS
-// ------------------------------------------------------------
+// ============================================================
+
 const { Map, View, Feature } = ol;
 
 const {
@@ -59,7 +61,11 @@ const hotspotSource = new VectorSource();
 // ============================================================
 
 const hotspotLayer = new VectorLayer({
+
   source: hotspotSource,
+
+  // Hotspot di atas TNS
+  zIndex: 100,
 
   style: function (feature) {
 
@@ -85,6 +91,7 @@ const hotspotLayer = new VectorLayer({
     return new Style({
 
       image: new CircleStyle({
+
         radius: 5,
 
         fill: new Fill({
@@ -95,59 +102,38 @@ const hotspotLayer = new VectorLayer({
           color: "#ffffff",
           width: 1
         })
+
       })
 
     });
 
   }
-});
-
-
-// ============================================================
-// LAYER PROVINSI
-// ============================================================
-
-const provinsiSource = new VectorSource();
-
-const provinsiLayer = new VectorLayer({
-
-  source: provinsiSource,
-
-  style: new Style({
-
-    fill: new Fill({
-      color: "rgba(0, 0, 0, 0)"
-    }),
-
-    stroke: new Stroke({
-      color: "#2563eb",
-      width: 1.5
-    })
-
-  })
 
 });
 
 
 // ============================================================
-// LAYER KABUPATEN
+// LAYER TNS BOUNDARY
 // ============================================================
 
-const kabupatenSource = new VectorSource();
+const tnsSource = new VectorSource();
 
-const kabupatenLayer = new VectorLayer({
+const tnsLayer = new VectorLayer({
 
-  source: kabupatenSource,
+  source: tnsSource,
+
+  // TNS di bawah hotspot
+  zIndex: 10,
 
   style: new Style({
 
     fill: new Fill({
-      color: "rgba(0, 0, 0, 0)"
+      color: "rgba(34, 197, 94, 0.12)"
     }),
 
     stroke: new Stroke({
-      color: "#64748b",
-      width: 1
+      color: "#16a34a",
+      width: 2
     })
 
   })
@@ -167,10 +153,10 @@ const map = new Map({
 
     baseLayer,
 
-    kabupatenLayer,
+    // TNS Boundary
+    tnsLayer,
 
-    provinsiLayer,
-
+    // Hotspot
     hotspotLayer
 
   ],
@@ -223,7 +209,9 @@ if (!popup) {
 }
 
 
-// Pastikan popupContent tersedia
+// ============================================================
+// POPUP CONTENT
+// ============================================================
 
 let popupContent =
   document.getElementById("popupContent");
@@ -516,14 +504,13 @@ function showHotspotPopup(
 
 
 // ============================================================
-// CLOSE POPUP WHEN CLICKING MAP
+// CLOSE POPUP WHEN MOVING MAP
 // ============================================================
 
 map.on(
   "movestart",
   function () {
 
-    // Tutup popup saat peta digeser
     popupOverlay.setPosition(
       undefined
     );
@@ -553,7 +540,7 @@ map.on(
         layer
       ) {
 
-        // Hanya hotspotLayer yang diproses
+        // Hanya hotspot yang dapat diklik
         if (
           layer !== hotspotLayer
         ) {
@@ -574,6 +561,7 @@ map.on(
       },
 
       {
+
         hitTolerance: 8,
 
         layerFilter:
@@ -843,9 +831,6 @@ async function loadHotspots() {
       new ol.format.GeoJSON();
 
 
-    // Mendukung FeatureCollection
-    // maupun Feature tunggal
-
     if (
       geojson.type ===
       "FeatureCollection"
@@ -855,6 +840,7 @@ async function loadHotspots() {
         format.readFeatures(
           geojson,
           {
+            dataProjection: "EPSG:4326",
             featureProjection:
               "EPSG:3857"
           }
@@ -872,6 +858,7 @@ async function loadHotspots() {
         format.readFeature(
           geojson,
           {
+            dataProjection: "EPSG:4326",
             featureProjection:
               "EPSG:3857"
           }
@@ -940,20 +927,16 @@ async function loadHotspots() {
 
 
 // ============================================================
-// LOAD ADMINISTRATIVE GEOJSON
+// LOAD TNS BOUNDARY
 // ============================================================
 
-async function loadAdminLayer(
-  url,
-  vectorSource,
-  layerName
-) {
+async function loadTNSBoundary() {
 
   try {
 
     const response =
       await fetch(
-        `${url}?ts=${Date.now()}`,
+        `data/TNS-boundary.geojson?ts=${Date.now()}`,
         {
           cache: "no-store"
         }
@@ -980,7 +963,9 @@ async function loadAdminLayer(
     let features = [];
 
 
+    // --------------------------------------------------------
     // FeatureCollection
+    // --------------------------------------------------------
 
     if (
       geojson.type ===
@@ -991,6 +976,9 @@ async function loadAdminLayer(
         format.readFeatures(
           geojson,
           {
+            dataProjection:
+              "EPSG:4326",
+
             featureProjection:
               "EPSG:3857"
           }
@@ -998,7 +986,10 @@ async function loadAdminLayer(
 
     }
 
+
+    // --------------------------------------------------------
     // Feature tunggal
+    // --------------------------------------------------------
 
     else if (
       geojson.type ===
@@ -1010,6 +1001,9 @@ async function loadAdminLayer(
         format.readFeature(
           geojson,
           {
+            dataProjection:
+              "EPSG:4326",
+
             featureProjection:
               "EPSG:3857"
           }
@@ -1019,69 +1013,71 @@ async function loadAdminLayer(
 
     }
 
+
     else {
 
       throw new Error(
-        "Unsupported GeoJSON type: " +
-        geojson.type
+        "Format GeoJSON TNS tidak valid"
       );
 
     }
 
 
-    vectorSource.clear();
+    // --------------------------------------------------------
+    // Masukkan ke source TNS
+    // --------------------------------------------------------
 
-    vectorSource.addFeatures(
+    tnsSource.clear();
+
+    tnsSource.addFeatures(
       features
     );
 
 
     console.log(
-      `${layerName} berhasil dimuat:`,
+      "TNS Boundary berhasil dimuat:",
       features.length
     );
 
+
+    // --------------------------------------------------------
+    // Zoom otomatis ke TNS
+    // --------------------------------------------------------
+
+    if (
+      features.length > 0
+    ) {
+
+      map.getView().fit(
+        tnsSource.getExtent(),
+        {
+
+          padding: [
+            50,
+            50,
+            50,
+            50
+          ],
+
+          duration: 1000,
+
+          maxZoom: 13
+
+        }
+      );
+
+    }
 
   }
 
   catch (error) {
 
     console.error(
-      `Gagal load ${layerName}:`,
+      "Gagal memuat TNS Boundary:",
       error
     );
 
   }
-
-}
-
-
-// ============================================================
-// LOAD PROVINSI
-// ============================================================
-
-function loadProvinsi() {
-
-  return loadAdminLayer(
-    "data/provinsi.geojson",
-    provinsiSource,
-    "provinsi"
-  );
-
-}
-
-
-// ============================================================
-// LOAD KABUPATEN
-// ============================================================
-
-function loadKabupaten() {
-
-  return loadAdminLayer(
-    "data/kabupaten.geojson",
-    kabupatenSource,
-    "kabupaten"
-  );
 
 }
 
@@ -1094,6 +1090,7 @@ const confidenceSelect =
   document.getElementById(
     "confidence"
   );
+
 
 if (confidenceSelect) {
 
@@ -1109,6 +1106,7 @@ const satelliteSelect =
   document.getElementById(
     "satellite"
   );
+
 
 if (satelliteSelect) {
 
@@ -1128,6 +1126,7 @@ const resetButton =
   document.getElementById(
     "reset"
   );
+
 
 if (resetButton) {
 
@@ -1165,13 +1164,7 @@ if (resetButton) {
 
 loadHotspots();
 
-
-// Layer administrasi hanya dimuat
-// jika file tersedia.
-
-loadProvinsi();
-
-loadKabupaten();
+loadTNSBoundary();
 
 
 // ============================================================
@@ -1187,12 +1180,10 @@ console.log(
 );
 
 console.log(
-  "🗺️ Layer provinsi aktif"
+  "🟢 Layer TNS Boundary aktif"
 );
 
-console.log(
-  "🗺️ Layer kabupaten aktif"
-);
+
 // ============================================================
 // GPS / LOKASI PENGGUNA
 // ============================================================
@@ -1213,17 +1204,23 @@ const gpsLayer = new VectorLayer({
     const type =
       feature.get("gpsType");
 
+
     // Lingkaran akurasi
-    if (type === "accuracy") {
+    if (
+      type === "accuracy"
+    ) {
 
       return new Style({
 
         fill: new Fill({
-          color: "rgba(37, 99, 235, 0.12)"
+          color:
+            "rgba(37, 99, 235, 0.12)"
         }),
 
         stroke: new Stroke({
-          color: "rgba(37, 99, 235, 0.45)",
+          color:
+            "rgba(37, 99, 235, 0.45)",
+
           width: 1
         })
 
@@ -1245,6 +1242,7 @@ const gpsLayer = new VectorLayer({
 
         stroke: new Stroke({
           color: "#ffffff",
+
           width: 3
         })
 
@@ -1329,11 +1327,14 @@ function setGPSStatus(
     return;
   }
 
+
   gpsStatus.textContent =
     message;
 
+
   gpsStatus.className =
     "gps-status";
+
 
   if (type) {
 
@@ -1524,10 +1525,11 @@ function handleGPSPosition(
       center:
         gpsCoordinate,
 
-      zoom: Math.max(
-        map.getView().getZoom(),
-        14
-      ),
+      zoom:
+        Math.max(
+          map.getView().getZoom(),
+          14
+        ),
 
       duration: 1000
 
@@ -1612,13 +1614,22 @@ function checkGPSSupport() {
       "error"
     );
 
+
     if (gpsButton) {
-      gpsButton.disabled = true;
+
+      gpsButton.disabled =
+        true;
+
     }
 
+
     if (gpsFollowButton) {
-      gpsFollowButton.disabled = true;
+
+      gpsFollowButton.disabled =
+        true;
+
     }
+
 
     return false;
 
@@ -1636,8 +1647,12 @@ function checkGPSSupport() {
 
 function getCurrentGPS() {
 
-  if (!checkGPSSupport()) {
+  if (
+    !checkGPSSupport()
+  ) {
+
     return;
+
   }
 
 
@@ -1657,6 +1672,7 @@ function getCurrentGPS() {
 
     },
 
+
     function (error) {
 
       handleGPSError(
@@ -1665,13 +1681,17 @@ function getCurrentGPS() {
 
     },
 
+
     {
 
-      enableHighAccuracy: true,
+      enableHighAccuracy:
+        true,
 
-      timeout: 15000,
+      timeout:
+        15000,
 
-      maximumAge: 0
+      maximumAge:
+        0
 
     }
 
@@ -1686,8 +1706,12 @@ function getCurrentGPS() {
 
 function startGPSFollow() {
 
-  if (!checkGPSSupport()) {
+  if (
+    !checkGPSSupport()
+  ) {
+
     return;
+
   }
 
 
@@ -1718,6 +1742,7 @@ function startGPSFollow() {
 
       },
 
+
       function (error) {
 
         handleGPSError(
@@ -1726,13 +1751,17 @@ function startGPSFollow() {
 
       },
 
+
       {
 
-        enableHighAccuracy: true,
+        enableHighAccuracy:
+          true,
 
-        timeout: 15000,
+        timeout:
+          15000,
 
-        maximumAge: 2000
+        maximumAge:
+          2000
 
       }
 
@@ -1744,6 +1773,7 @@ function startGPSFollow() {
     gpsFollowButton.classList.add(
       "active"
     );
+
 
     gpsFollowButton.textContent =
       "⏹ Berhenti Ikuti Lokasi";
@@ -1767,6 +1797,7 @@ function stopGPSFollow() {
       gpsWatchId
     );
 
+
     gpsWatchId = null;
 
   }
@@ -1777,6 +1808,7 @@ function stopGPSFollow() {
     gpsFollowButton.classList.remove(
       "active"
     );
+
 
     gpsFollowButton.textContent =
       "🎯 Ikuti Lokasi";
