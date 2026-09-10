@@ -142,6 +142,81 @@ const tnsLayer = new VectorLayer({
 
 
 // ============================================================
+// LAYER UPLOAD KML/KMZ
+// ============================================================
+
+const kmlUploadSource = new VectorSource();
+
+const kmlUploadStyle = new Style({
+
+  fill: new Fill({
+    color: "rgba(37, 99, 235, 0.15)"
+  }),
+
+  stroke: new Stroke({
+    color: "#2563eb",
+    width: 2
+  }),
+
+  image: new CircleStyle({
+
+    radius: 6,
+
+    fill: new Fill({
+      color: "#2563eb"
+    }),
+
+    stroke: new Stroke({
+      color: "#ffffff",
+      width: 1.5
+    })
+
+  })
+
+});
+
+const kmlUploadLayer = new VectorLayer({
+
+  source: kmlUploadSource,
+
+  // Layer upload paling atas
+  zIndex: 200,
+
+  style: function (feature) {
+
+    // Pakai style bawaan file KML jika ada,
+    // kalau tidak pakai style default biru di atas.
+    const styleFunction =
+      feature.getStyleFunction();
+
+    if (styleFunction) {
+
+      const featureStyle =
+        styleFunction(feature);
+
+      if (
+        featureStyle &&
+        (
+          Array.isArray(featureStyle)
+            ? featureStyle.length > 0
+            : true
+        )
+      ) {
+
+        return featureStyle;
+
+      }
+
+    }
+
+    return kmlUploadStyle;
+
+  }
+
+});
+
+
+// ============================================================
 // MAP
 // ============================================================
 
@@ -157,7 +232,10 @@ const map = new Map({
     tnsLayer,
 
     // Hotspot
-    hotspotLayer
+    hotspotLayer,
+
+    // Upload KML/KMZ
+    kmlUploadLayer
 
   ],
 
@@ -1151,6 +1229,323 @@ if (resetButton) {
 
 
       applyFilters();
+
+    }
+  );
+
+}
+
+
+// ============================================================
+// UPLOAD KML / KMZ
+// ============================================================
+
+function setKMLStatus(message, type) {
+
+  const el =
+    document.getElementById(
+      "kmlStatus"
+    );
+
+  if (!el) {
+    return;
+  }
+
+  el.textContent = message;
+
+  el.classList.remove(
+    "success",
+    "error"
+  );
+
+  if (type) {
+    el.classList.add(type);
+  }
+
+}
+
+
+function readFileAsText(file) {
+
+  return new Promise(
+    function (resolve, reject) {
+
+      const reader = new FileReader();
+
+      reader.onload = function () {
+        resolve(reader.result);
+      };
+
+      reader.onerror = function () {
+        reject(reader.error);
+      };
+
+      reader.readAsText(file);
+
+    }
+  );
+
+}
+
+
+function readFileAsArrayBuffer(file) {
+
+  return new Promise(
+    function (resolve, reject) {
+
+      const reader = new FileReader();
+
+      reader.onload = function () {
+        resolve(reader.result);
+      };
+
+      reader.onerror = function () {
+        reject(reader.error);
+      };
+
+      reader.readAsArrayBuffer(file);
+
+    }
+  );
+
+}
+
+
+function addKMLFeaturesFromText(kmlText) {
+
+  const kmlFormat =
+    new ol.format.KML({
+      extractStyles: true,
+      showPointNames: false
+    });
+
+  const features =
+    kmlFormat.readFeatures(
+      kmlText,
+      {
+        featureProjection: "EPSG:3857"
+      }
+    );
+
+  if (
+    !features ||
+    features.length === 0
+  ) {
+
+    throw new Error(
+      "Tidak ada fitur yang ditemukan di dalam file."
+    );
+
+  }
+
+  kmlUploadSource.addFeatures(
+    features
+  );
+
+  return features.length;
+
+}
+
+
+async function handleKMLFile(file) {
+
+  const fileName =
+    (file.name || "").toLowerCase();
+
+
+  setKMLStatus(
+    `Memuat "${file.name}" ...`,
+    null
+  );
+
+
+  try {
+
+    let totalFeatures = 0;
+
+
+    // --------------------------------------------------------
+    // File .KML (teks XML biasa)
+    // --------------------------------------------------------
+
+    if (fileName.endsWith(".kml")) {
+
+      const text =
+        await readFileAsText(file);
+
+      totalFeatures =
+        addKMLFeaturesFromText(text);
+
+    }
+
+
+    // --------------------------------------------------------
+    // File .KMZ (KML terkompresi dalam ZIP)
+    // --------------------------------------------------------
+
+    else if (fileName.endsWith(".kmz")) {
+
+      if (
+        typeof JSZip === "undefined"
+      ) {
+
+        throw new Error(
+          "Library JSZip belum dimuat."
+        );
+
+      }
+
+      const buffer =
+        await readFileAsArrayBuffer(
+          file
+        );
+
+      const zip =
+        await JSZip.loadAsync(
+          buffer
+        );
+
+      const kmlEntryName =
+        Object.keys(zip.files).find(
+          function (name) {
+
+            return (
+              name
+                .toLowerCase()
+                .endsWith(".kml")
+            );
+
+          }
+        );
+
+      if (!kmlEntryName) {
+
+        throw new Error(
+          "File .kmz tidak berisi file .kml."
+        );
+
+      }
+
+      const text =
+        await zip
+          .files[kmlEntryName]
+          .async("string");
+
+      totalFeatures =
+        addKMLFeaturesFromText(text);
+
+    }
+
+
+    // --------------------------------------------------------
+    // Format tidak didukung
+    // --------------------------------------------------------
+
+    else {
+
+      throw new Error(
+        "Format file harus .kml atau .kmz"
+      );
+
+    }
+
+
+    // --------------------------------------------------------
+    // Zoom otomatis ke fitur yang baru ditambahkan
+    // --------------------------------------------------------
+
+    const extent =
+      kmlUploadSource.getExtent();
+
+    if (
+      extent &&
+      isFinite(extent[0])
+    ) {
+
+      map.getView().fit(
+        extent,
+        {
+          padding: [50, 50, 50, 50],
+          maxZoom: 16,
+          duration: 400
+        }
+      );
+
+    }
+
+
+    setKMLStatus(
+      `✅ "${file.name}" berhasil dimuat (${totalFeatures} fitur).`,
+      "success"
+    );
+
+  }
+
+  catch (error) {
+
+    console.error(
+      "Gagal memuat KML/KMZ:",
+      error
+    );
+
+    setKMLStatus(
+      `❌ Gagal memuat "${file.name}": ${error.message}`,
+      "error"
+    );
+
+  }
+
+}
+
+
+const kmlFileInput =
+  document.getElementById(
+    "kmlFile"
+  );
+
+
+if (kmlFileInput) {
+
+  kmlFileInput.addEventListener(
+    "change",
+    function (event) {
+
+      const file =
+        event.target.files &&
+        event.target.files[0];
+
+      if (file) {
+        handleKMLFile(file);
+      }
+
+    }
+  );
+
+}
+
+
+const kmlClearButton =
+  document.getElementById(
+    "kmlClear"
+  );
+
+
+if (kmlClearButton) {
+
+  kmlClearButton.addEventListener(
+    "click",
+    function () {
+
+      kmlUploadSource.clear();
+
+      if (kmlFileInput) {
+        kmlFileInput.value = "";
+      }
+
+      setKMLStatus(
+        "Belum ada file diunggah",
+        null
+      );
 
     }
   );

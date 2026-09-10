@@ -180,6 +180,25 @@ select {
 }
 
 
+input[type="file"] {
+  width: 100%;
+
+  padding: 9px;
+
+  border: 1px dashed #cbd5e1;
+
+  border-radius: 7px;
+
+  background: #f8fafc;
+
+  color: #1f2937;
+
+  font-family: inherit;
+
+  font-size: 12px;
+}
+
+
 button {
   margin-top: 12px;
 
