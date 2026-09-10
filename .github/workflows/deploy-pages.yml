@@ -4,6 +4,16 @@ on:
   push:
     branches:
       - main
+  # Commits made by the default GITHUB_TOKEN (like the automated FIRMS data
+  # update) do NOT trigger other workflows via `push`, by GitHub's design
+  # (loop prevention). This second trigger fires whenever the "Update NASA
+  # FIRMS data" workflow finishes, so a new deploy still happens even when
+  # `push` above didn't fire.
+  workflow_run:
+    workflows:
+      - "Update NASA FIRMS data"
+    types:
+      - completed
 
 permissions:
   contents: read
@@ -12,6 +22,13 @@ permissions:
 
 jobs:
   deploy:
+    # Only deploy if this run was triggered by a normal push, or by a
+    # successful "Update NASA FIRMS data" run. Skip if that workflow failed
+    # (nothing new to deploy).
+    if: >
+      github.event_name == 'push' ||
+      github.event.workflow_run.conclusion == 'success'
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -21,6 +38,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # When triggered by workflow_run, explicitly check out the exact
+          # commit that workflow produced, instead of whatever `main`
+          # happens to point to when this job starts.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
