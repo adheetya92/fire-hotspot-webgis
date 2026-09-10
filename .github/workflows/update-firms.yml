@@ -26,10 +26,13 @@ jobs:
           FIRMS_MAP_KEY: ${{ secrets.FIRMS_MAP_KEY }}
         run: python scripts/fetch_firms.py
 
-      - name: Commit updated GeoJSON
+      - name: Convert hotspots to KML (for Avenza Maps import)
+        run: python scripts/geojson_to_kml.py
+
+      - name: Commit updated GeoJSON and KML
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/hotspots.geojson
+          git add data/hotspots.geojson data/hotspots.kml
           git diff --cached --quiet || git commit -m "chore: update FIRMS hotspots"
           git push
