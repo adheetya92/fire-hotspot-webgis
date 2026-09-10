@@ -39,15 +39,6 @@ const {
   Overlay
 } = ol;
 
-const {
-  Draw
-} = ol.interaction;
-
-const {
-  getArea,
-  getLength
-} = ol.sphere;
-
 
 // ============================================================
 // BASEMAP
@@ -151,118 +142,54 @@ const tnsLayer = new VectorLayer({
 
 
 // ============================================================
-// LAYER UPLOAD KML/KMZ
+// LAYER BATAS ADMINISTRASI (Kabupaten/Kota & Kecamatan)
 // ============================================================
+//
+// Sengaja tanpa "fill" (transparan) supaya hotspot yang ada di
+// dalamnya tetap terlihat jelas, cuma garis batasnya saja yang
+// ditampilkan.
 
-const kmlUploadSource = new VectorSource();
+const kabupatenSource = new VectorSource();
 
-const kmlUploadStyle = new Style({
+const kabupatenLayer = new VectorLayer({
 
-  fill: new Fill({
-    color: "rgba(37, 99, 235, 0.15)"
-  }),
+  source: kabupatenSource,
 
-  stroke: new Stroke({
-    color: "#2563eb",
-    width: 2
-  }),
+  zIndex: 5,
 
-  image: new CircleStyle({
+  visible: false,
 
-    radius: 6,
-
-    fill: new Fill({
-      color: "#2563eb"
-    }),
+  style: new Style({
 
     stroke: new Stroke({
-      color: "#ffffff",
-      width: 1.5
+      color: "#1f2937",
+      width: 2
     })
 
   })
 
 });
 
-const kmlUploadLayer = new VectorLayer({
 
-  source: kmlUploadSource,
+const kecamatanSource = new VectorSource();
 
-  // Layer upload paling atas
-  zIndex: 200,
+const kecamatanLayer = new VectorLayer({
 
-  style: function (feature) {
+  source: kecamatanSource,
 
-    // Pakai style bawaan file KML jika ada,
-    // kalau tidak pakai style default biru di atas.
-    const styleFunction =
-      feature.getStyleFunction();
+  zIndex: 6,
 
-    if (styleFunction) {
-
-      const featureStyle =
-        styleFunction(feature);
-
-      if (
-        featureStyle &&
-        (
-          Array.isArray(featureStyle)
-            ? featureStyle.length > 0
-            : true
-        )
-      ) {
-
-        return featureStyle;
-
-      }
-
-    }
-
-    return kmlUploadStyle;
-
-  }
-
-});
-
-
-// ============================================================
-// LAYER UKUR JARAK & LUAS
-// ============================================================
-
-const measureSource = new VectorSource();
-
-const measureLayer = new VectorLayer({
-
-  source: measureSource,
-
-  // Paling atas, di atas layer upload
-  zIndex: 300,
+  visible: false,
 
   style: new Style({
 
-    fill: new Fill({
-      color: "rgba(249, 115, 22, 0.15)"
-    }),
-
     stroke: new Stroke({
-      color: "#f97316",
-      width: 2,
-      lineDash: [8, 8]
-    }),
-
-    image: new CircleStyle({
-
-      radius: 5,
-
-      fill: new Fill({
-        color: "#f97316"
-      }),
-
-      stroke: new Stroke({
-        color: "#ffffff",
-        width: 1.5
-      })
-
+      color: "#64748b",
+      width: 1,
+      lineDash: [
+        4,
+        4
+      ]
     })
 
   })
@@ -282,17 +209,15 @@ const map = new Map({
 
     baseLayer,
 
+    // Batas administrasi (di bawah TNS)
+    kabupatenLayer,
+    kecamatanLayer,
+
     // TNS Boundary
     tnsLayer,
 
     // Hotspot
-    hotspotLayer,
-
-    // Upload KML/KMZ
-    kmlUploadLayer,
-
-    // Ukur jarak & luas
-    measureLayer
+    hotspotLayer
 
   ],
 
@@ -1218,6 +1143,466 @@ async function loadTNSBoundary() {
 
 
 // ============================================================
+// LOAD BATAS ADMINISTRASI (generik, dipakai kabupaten & kecamatan)
+// ============================================================
+
+async function loadAdminBoundaryLayer(url, source, label) {
+
+  const response =
+    await fetch(
+      `${url}?ts=${Date.now()}`,
+      {
+        cache: "no-store"
+      }
+    );
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const geojson = await response.json();
+
+  const format = new ol.format.GeoJSON();
+
+  let features = [];
+
+  if (geojson.type === "FeatureCollection") {
+
+    features = format.readFeatures(
+      geojson,
+      {
+        dataProjection: "EPSG:4326",
+        featureProjection: "EPSG:3857"
+      }
+    );
+
+  }
+
+  else if (geojson.type === "Feature") {
+
+    features = [
+      format.readFeature(
+        geojson,
+        {
+          dataProjection: "EPSG:4326",
+          featureProjection: "EPSG:3857"
+        }
+      )
+    ];
+
+  }
+
+  else {
+    throw new Error(`Format GeoJSON ${label} tidak valid`);
+  }
+
+  source.clear();
+  source.addFeatures(features);
+
+  console.log(
+    `Layer ${label} berhasil dimuat:`,
+    features.length
+  );
+
+  return features.length;
+
+}
+
+
+// Supaya file cuma di-fetch sekali walau checkbox dipencet
+// berkali-kali.
+const adminBoundaryState = {
+
+  kabupaten: {
+    loaded: false,
+    loading: false,
+    url: "data/kabupaten-kalteng.geojson"
+  },
+
+  kecamatan: {
+    loaded: false,
+    loading: false,
+    url: "data/kecamatan-kalteng.geojson"
+  }
+
+};
+
+
+function setupAdminBoundaryToggle(checkboxId, layer, source, stateKey, label) {
+
+  const checkbox = document.getElementById(checkboxId);
+
+  if (!checkbox) {
+    return;
+  }
+
+  checkbox.addEventListener("change", async function () {
+
+    const state = adminBoundaryState[stateKey];
+
+    // Belum dicentang -> sembunyikan saja, tidak perlu fetch ulang
+    if (!checkbox.checked) {
+      layer.setVisible(false);
+      return;
+    }
+
+    layer.setVisible(true);
+
+    // Sudah pernah dimuat sebelumnya -> tidak perlu fetch lagi
+    if (state.loaded || state.loading) {
+      return;
+    }
+
+    state.loading = true;
+
+    try {
+
+      const count =
+        await loadAdminBoundaryLayer(
+          state.url,
+          source,
+          label
+        );
+
+      state.loaded = true;
+
+      if (count === 0) {
+
+        console.warn(
+          `${label}: file GeoJSON ditemukan tapi tidak berisi fitur.`
+        );
+
+      }
+
+    }
+
+    catch (error) {
+
+      console.error(
+        `Gagal memuat batas ${label}:`,
+        error
+      );
+
+      alert(
+        `Gagal memuat batas ${label}. ` +
+        `Pastikan file ${state.url} sudah ada di repo.`
+      );
+
+      checkbox.checked = false;
+      layer.setVisible(false);
+
+    }
+
+    finally {
+      state.loading = false;
+    }
+
+  });
+
+}
+
+
+setupAdminBoundaryToggle(
+  "toggleKabupaten",
+  kabupatenLayer,
+  kabupatenSource,
+  "kabupaten",
+  "Kabupaten/Kota"
+);
+
+setupAdminBoundaryToggle(
+  "toggleKecamatan",
+  kecamatanLayer,
+  kecamatanSource,
+  "kecamatan",
+  "Kecamatan"
+);
+
+
+// ============================================================
+// UPLOAD KML / KMZ
+// ============================================================
+
+const kmlSource = new VectorSource();
+
+const kmlLayer = new VectorLayer({
+
+  source: kmlSource,
+
+  // Di atas TNS, di bawah hotspot, supaya hotspot tetap terlihat
+  zIndex: 60
+
+});
+
+map.addLayer(kmlLayer);
+
+
+const kmlUploadButton =
+  document.getElementById("kmlUploadButton");
+
+const kmlUploadInput =
+  document.getElementById("kmlUpload");
+
+const kmlStatus =
+  document.getElementById("kmlStatus");
+
+
+function setKMLStatus(message, type = "") {
+
+  if (!kmlStatus) {
+    return;
+  }
+
+  kmlStatus.hidden = false;
+
+  kmlStatus.textContent = message;
+
+  kmlStatus.className = "kml-status";
+
+  if (type) {
+    kmlStatus.classList.add(type);
+  }
+
+}
+
+
+function zoomToKMLSource() {
+
+  const extent = kmlSource.getExtent();
+
+  const isValidExtent =
+    extent &&
+    extent.every(function (value) {
+      return Number.isFinite(value);
+    });
+
+  if (!isValidExtent) {
+    return;
+  }
+
+  map.getView().fit(extent, {
+
+    padding: [
+      50,
+      50,
+      50,
+      50
+    ],
+
+    duration: 1000,
+
+    maxZoom: 16
+
+  });
+
+}
+
+
+function addKMLFeatures(kmlText, fileLabel) {
+
+  const format = new ol.format.KML({
+    extractStyles: true
+  });
+
+  let features;
+
+  try {
+
+    features = format.readFeatures(
+      kmlText,
+      {
+        featureProjection: "EPSG:3857"
+      }
+    );
+
+  }
+
+  catch (error) {
+
+    console.error("Gagal parsing KML:", error);
+
+    setKMLStatus(
+      `Gagal membaca ${fileLabel}: isi file KML tidak valid.`,
+      "error"
+    );
+
+    return;
+
+  }
+
+  if (!features.length) {
+
+    setKMLStatus(
+      `${fileLabel} tidak berisi data yang bisa ditampilkan.`,
+      "error"
+    );
+
+    return;
+
+  }
+
+  kmlSource.clear();
+
+  kmlSource.addFeatures(features);
+
+  setKMLStatus(
+    `${fileLabel}: ${features.length} fitur dimuat.`,
+    "success"
+  );
+
+  zoomToKMLSource();
+
+}
+
+
+function handleKMLFile(file) {
+
+  const name = file.name || "file";
+
+  const lower = name.toLowerCase();
+
+
+  // --------------------------------------------------------
+  // KML biasa (teks langsung)
+  // --------------------------------------------------------
+
+  if (lower.endsWith(".kml")) {
+
+    const reader = new FileReader();
+
+    reader.onload = function () {
+      addKMLFeatures(reader.result, name);
+    };
+
+    reader.onerror = function () {
+      setKMLStatus(`Gagal membaca ${name}.`, "error");
+    };
+
+    reader.readAsText(file);
+
+    return;
+
+  }
+
+
+  // --------------------------------------------------------
+  // KMZ (KML yang di-zip, perlu dibuka dulu pakai JSZip)
+  // --------------------------------------------------------
+
+  if (lower.endsWith(".kmz")) {
+
+    if (typeof JSZip === "undefined") {
+
+      setKMLStatus(
+        "Library KMZ gagal dimuat. Coba refresh halaman.",
+        "error"
+      );
+
+      return;
+
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function () {
+
+      JSZip.loadAsync(reader.result)
+        .then(function (zip) {
+
+          const kmlEntryName =
+            Object.keys(zip.files).find(function (entryName) {
+              return entryName.toLowerCase().endsWith(".kml");
+            });
+
+          if (!kmlEntryName) {
+
+            setKMLStatus(
+              `${name} tidak berisi file .kml di dalamnya.`,
+              "error"
+            );
+
+            return;
+
+          }
+
+          return zip.files[kmlEntryName]
+            .async("string")
+            .then(function (text) {
+              addKMLFeatures(text, name);
+            });
+
+        })
+        .catch(function (error) {
+
+          console.error("Gagal membuka KMZ:", error);
+
+          setKMLStatus(
+            `Gagal membuka ${name}: bukan file KMZ yang valid.`,
+            "error"
+          );
+
+        });
+
+    };
+
+    reader.onerror = function () {
+      setKMLStatus(`Gagal membaca ${name}.`, "error");
+    };
+
+    reader.readAsArrayBuffer(file);
+
+    return;
+
+  }
+
+
+  // --------------------------------------------------------
+  // Format lain: ditolak
+  // --------------------------------------------------------
+
+  setKMLStatus(
+    "Format file tidak didukung. Gunakan .kml atau .kmz.",
+    "error"
+  );
+
+}
+
+
+if (kmlUploadButton && kmlUploadInput) {
+
+  kmlUploadButton.addEventListener(
+    "click",
+    function () {
+      kmlUploadInput.click();
+    }
+  );
+
+  kmlUploadInput.addEventListener(
+    "change",
+    function () {
+
+      const file =
+        kmlUploadInput.files &&
+        kmlUploadInput.files[0];
+
+      if (!file) {
+        return;
+      }
+
+      setKMLStatus("Memuat file...");
+
+      handleKMLFile(file);
+
+      // Kosongkan input supaya file yang sama bisa di-upload ulang
+      kmlUploadInput.value = "";
+
+    }
+  );
+
+}
+
+
+// ============================================================
 // FILTER EVENTS
 // ============================================================
 
@@ -1286,704 +1671,6 @@ if (resetButton) {
 
 
       applyFilters();
-
-    }
-  );
-
-}
-
-
-// ============================================================
-// UPLOAD KML / KMZ
-// ============================================================
-
-function setKMLStatus(message, type) {
-
-  const el =
-    document.getElementById(
-      "kmlStatus"
-    );
-
-  if (!el) {
-    return;
-  }
-
-  el.textContent = message;
-
-  el.classList.remove(
-    "success",
-    "error"
-  );
-
-  if (type) {
-    el.classList.add(type);
-  }
-
-}
-
-
-function readFileAsText(file) {
-
-  return new Promise(
-    function (resolve, reject) {
-
-      const reader = new FileReader();
-
-      reader.onload = function () {
-        resolve(reader.result);
-      };
-
-      reader.onerror = function () {
-        reject(reader.error);
-      };
-
-      reader.readAsText(file);
-
-    }
-  );
-
-}
-
-
-function readFileAsArrayBuffer(file) {
-
-  return new Promise(
-    function (resolve, reject) {
-
-      const reader = new FileReader();
-
-      reader.onload = function () {
-        resolve(reader.result);
-      };
-
-      reader.onerror = function () {
-        reject(reader.error);
-      };
-
-      reader.readAsArrayBuffer(file);
-
-    }
-  );
-
-}
-
-
-function addKMLFeaturesFromText(kmlText) {
-
-  const kmlFormat =
-    new ol.format.KML({
-      extractStyles: true,
-      showPointNames: false
-    });
-
-  const features =
-    kmlFormat.readFeatures(
-      kmlText,
-      {
-        featureProjection: "EPSG:3857"
-      }
-    );
-
-  if (
-    !features ||
-    features.length === 0
-  ) {
-
-    throw new Error(
-      "Tidak ada fitur yang ditemukan di dalam file."
-    );
-
-  }
-
-  kmlUploadSource.addFeatures(
-    features
-  );
-
-  return features.length;
-
-}
-
-
-async function handleKMLFile(file) {
-
-  const fileName =
-    (file.name || "").toLowerCase();
-
-
-  setKMLStatus(
-    `Memuat "${file.name}" ...`,
-    null
-  );
-
-
-  try {
-
-    let totalFeatures = 0;
-
-
-    // --------------------------------------------------------
-    // File .KML (teks XML biasa)
-    // --------------------------------------------------------
-
-    if (fileName.endsWith(".kml")) {
-
-      const text =
-        await readFileAsText(file);
-
-      totalFeatures =
-        addKMLFeaturesFromText(text);
-
-    }
-
-
-    // --------------------------------------------------------
-    // File .KMZ (KML terkompresi dalam ZIP)
-    // --------------------------------------------------------
-
-    else if (fileName.endsWith(".kmz")) {
-
-      if (
-        typeof JSZip === "undefined"
-      ) {
-
-        throw new Error(
-          "Library JSZip belum dimuat."
-        );
-
-      }
-
-      const buffer =
-        await readFileAsArrayBuffer(
-          file
-        );
-
-      const zip =
-        await JSZip.loadAsync(
-          buffer
-        );
-
-      const kmlEntryName =
-        Object.keys(zip.files).find(
-          function (name) {
-
-            return (
-              name
-                .toLowerCase()
-                .endsWith(".kml")
-            );
-
-          }
-        );
-
-      if (!kmlEntryName) {
-
-        throw new Error(
-          "File .kmz tidak berisi file .kml."
-        );
-
-      }
-
-      const text =
-        await zip
-          .files[kmlEntryName]
-          .async("string");
-
-      totalFeatures =
-        addKMLFeaturesFromText(text);
-
-    }
-
-
-    // --------------------------------------------------------
-    // Format tidak didukung
-    // --------------------------------------------------------
-
-    else {
-
-      throw new Error(
-        "Format file harus .kml atau .kmz"
-      );
-
-    }
-
-
-    // --------------------------------------------------------
-    // Zoom otomatis ke fitur yang baru ditambahkan
-    // --------------------------------------------------------
-
-    const extent =
-      kmlUploadSource.getExtent();
-
-    if (
-      extent &&
-      isFinite(extent[0])
-    ) {
-
-      map.getView().fit(
-        extent,
-        {
-          padding: [50, 50, 50, 50],
-          maxZoom: 16,
-          duration: 400
-        }
-      );
-
-    }
-
-
-    setKMLStatus(
-      `✅ "${file.name}" berhasil dimuat (${totalFeatures} fitur).`,
-      "success"
-    );
-
-  }
-
-  catch (error) {
-
-    console.error(
-      "Gagal memuat KML/KMZ:",
-      error
-    );
-
-    setKMLStatus(
-      `❌ Gagal memuat "${file.name}": ${error.message}`,
-      "error"
-    );
-
-  }
-
-}
-
-
-const kmlFileInput =
-  document.getElementById(
-    "kmlFile"
-  );
-
-
-if (kmlFileInput) {
-
-  kmlFileInput.addEventListener(
-    "change",
-    function (event) {
-
-      const file =
-        event.target.files &&
-        event.target.files[0];
-
-      if (file) {
-        handleKMLFile(file);
-      }
-
-    }
-  );
-
-}
-
-
-const kmlClearButton =
-  document.getElementById(
-    "kmlClear"
-  );
-
-
-if (kmlClearButton) {
-
-  kmlClearButton.addEventListener(
-    "click",
-    function () {
-
-      kmlUploadSource.clear();
-
-      if (kmlFileInput) {
-        kmlFileInput.value = "";
-      }
-
-      setKMLStatus(
-        "Belum ada file diunggah",
-        null
-      );
-
-    }
-  );
-
-}
-
-
-// ============================================================
-// UKUR JARAK & LUAS
-// ============================================================
-
-let measureDrawInteraction = null;
-let measureSketchFeature = null;
-let measureTooltipElement = null;
-let measureTooltipOverlay = null;
-let measureActiveMode = null;
-
-
-function formatLength(lineGeom) {
-
-  const length = getLength(
-    lineGeom,
-    {
-      projection: map.getView().getProjection()
-    }
-  );
-
-  if (length > 1000) {
-
-    return (
-      (length / 1000).toFixed(2) + " km"
-    );
-
-  }
-
-  return Math.round(length) + " m";
-
-}
-
-
-function formatArea(polygonGeom) {
-
-  const area = getArea(
-    polygonGeom,
-    {
-      projection: map.getView().getProjection()
-    }
-  );
-
-  if (area > 1000000) {
-
-    return (
-      (area / 1000000).toFixed(2) + " km²"
-    );
-
-  }
-
-  return Math.round(area) + " m²";
-
-}
-
-
-function createMeasureTooltip() {
-
-  if (measureTooltipOverlay) {
-
-    map.removeOverlay(
-      measureTooltipOverlay
-    );
-
-  }
-
-  measureTooltipElement =
-    document.createElement("div");
-
-  measureTooltipElement.className =
-    "measure-tooltip";
-
-  measureTooltipOverlay = new Overlay({
-
-    element: measureTooltipElement,
-
-    offset: [0, -12],
-
-    positioning: "bottom-center",
-
-    stopEvent: false
-
-  });
-
-  map.addOverlay(
-    measureTooltipOverlay
-  );
-
-}
-
-
-function setMeasureStatus(message) {
-
-  const el =
-    document.getElementById(
-      "measureStatus"
-    );
-
-  if (el) {
-    el.textContent = message;
-  }
-
-}
-
-
-function setMeasureButtonsActive(mode) {
-
-  const distanceBtn =
-    document.getElementById(
-      "measureDistance"
-    );
-
-  const areaBtn =
-    document.getElementById(
-      "measureArea"
-    );
-
-  if (distanceBtn) {
-
-    distanceBtn.classList.toggle(
-      "active",
-      mode === "distance"
-    );
-
-  }
-
-  if (areaBtn) {
-
-    areaBtn.classList.toggle(
-      "active",
-      mode === "area"
-    );
-
-  }
-
-}
-
-
-function stopMeasuring() {
-
-  if (measureDrawInteraction) {
-
-    map.removeInteraction(
-      measureDrawInteraction
-    );
-
-    measureDrawInteraction = null;
-
-  }
-
-  // Buang tooltip yang belum selesai digambar (belum di-drawend)
-  if (
-    measureTooltipOverlay &&
-    measureTooltipElement &&
-    !measureTooltipElement.classList.contains(
-      "measure-tooltip-static"
-    )
-  ) {
-
-    map.removeOverlay(
-      measureTooltipOverlay
-    );
-
-    measureTooltipOverlay = null;
-    measureTooltipElement = null;
-
-  }
-
-  measureActiveMode = null;
-
-  setMeasureButtonsActive(null);
-
-}
-
-
-function startMeasuring(mode) {
-
-  stopMeasuring();
-
-  measureActiveMode = mode;
-
-  setMeasureButtonsActive(mode);
-
-  const geometryType =
-    mode === "area" ? "Polygon" : "LineString";
-
-  setMeasureStatus(
-    mode === "area"
-      ? "Klik untuk menambah titik area, klik dua kali untuk selesai."
-      : "Klik untuk menambah titik garis, klik dua kali untuk selesai."
-  );
-
-  measureDrawInteraction = new Draw({
-    source: measureSource,
-    type: geometryType
-  });
-
-  map.addInteraction(
-    measureDrawInteraction
-  );
-
-  createMeasureTooltip();
-
-  measureDrawInteraction.on(
-    "drawstart",
-    function (event) {
-
-      measureSketchFeature = event.feature;
-
-      measureSketchFeature
-        .getGeometry()
-        .on("change", function (changeEvent) {
-
-          const geom = changeEvent.target;
-
-          let output = "";
-          let tooltipCoord;
-
-          if (geom.getType() === "Polygon") {
-
-            output = formatArea(geom);
-            tooltipCoord = geom.getInteriorPoint().getCoordinates();
-
-          }
-
-          else {
-
-            output = formatLength(geom);
-            tooltipCoord = geom.getLastCoordinate();
-
-          }
-
-          measureTooltipElement.textContent = output;
-
-          measureTooltipOverlay.setPosition(
-            tooltipCoord
-          );
-
-        });
-
-    }
-  );
-
-  measureDrawInteraction.on(
-    "drawend",
-    function () {
-
-      measureTooltipElement.className =
-        "measure-tooltip measure-tooltip-static";
-
-      measureTooltipOverlay.setOffset([0, -7]);
-
-      // Lepas referensi tooltip yang sudah selesai supaya TIDAK
-      // ikut terhapus saat tooltip baru dibuat untuk sketsa berikutnya
-      measureTooltipElement = null;
-      measureTooltipOverlay = null;
-
-      measureSketchFeature = null;
-
-      setMeasureStatus(
-        "Pengukuran selesai. Pilih mode lagi untuk ukur baru, atau hapus."
-      );
-
-      createMeasureTooltip();
-
-    }
-  );
-
-}
-
-
-const measureDistanceButton =
-  document.getElementById(
-    "measureDistance"
-  );
-
-if (measureDistanceButton) {
-
-  measureDistanceButton.addEventListener(
-    "click",
-    function () {
-
-      if (measureActiveMode === "distance") {
-
-        stopMeasuring();
-
-        setMeasureStatus(
-          "Mode ukur jarak dimatikan."
-        );
-
-      }
-
-      else {
-
-        startMeasuring("distance");
-
-      }
-
-    }
-  );
-
-}
-
-
-const measureAreaButton =
-  document.getElementById(
-    "measureArea"
-  );
-
-if (measureAreaButton) {
-
-  measureAreaButton.addEventListener(
-    "click",
-    function () {
-
-      if (measureActiveMode === "area") {
-
-        stopMeasuring();
-
-        setMeasureStatus(
-          "Mode ukur luas dimatikan."
-        );
-
-      }
-
-      else {
-
-        startMeasuring("area");
-
-      }
-
-    }
-  );
-
-}
-
-
-const measureClearButton =
-  document.getElementById(
-    "measureClear"
-  );
-
-if (measureClearButton) {
-
-  measureClearButton.addEventListener(
-    "click",
-    function () {
-
-      stopMeasuring();
-
-      measureSource.clear();
-
-      // Hapus semua tooltip overlay hasil pengukuran
-      map.getOverlays()
-        .getArray()
-        .slice()
-        .forEach(function (overlay) {
-
-          const element = overlay.getElement();
-
-          if (
-            element &&
-            element.classList &&
-            element.classList.contains("measure-tooltip")
-          ) {
-
-            map.removeOverlay(overlay);
-
-          }
-
-        });
-
-      setMeasureStatus(
-        "Pilih mode ukur, lalu klik di peta. Klik dua kali / klik terakhir untuk mengakhiri."
-      );
 
     }
   );

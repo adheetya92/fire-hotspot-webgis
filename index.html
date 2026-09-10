@@ -90,6 +90,17 @@
         </select>
 
         <button id="reset">Reset filter</button>
+
+        <input
+          id="kmlUpload"
+          type="file"
+          accept=".kml,.kmz"
+          hidden
+        >
+        <button id="kmlUploadButton" type="button">
+          📂 Upload KML/KMZ
+        </button>
+        <div id="kmlStatus" class="kml-status" hidden></div>
       </section>
 
       <section class="stats">
@@ -99,50 +110,25 @@
         <div><span>Low</span><strong id="low">0</strong></div>
       </section>
 
-      <section class="panel">
-        <h2>📂 Upload KML/KMZ</h2>
-
-        <label for="kmlFile">Pilih file (.kml / .kmz)</label>
-        <input
-          type="file"
-          id="kmlFile"
-          accept=".kml,.kmz"
-        >
-
-        <div id="kmlStatus" class="gps-status">
-          Belum ada file diunggah
-        </div>
-
-        <button id="kmlClear" type="button">
-          🗑️ Hapus Layer Upload
-        </button>
-      </section>
-
-      <section class="panel">
-        <h2>📏 Ukur Jarak & Luas</h2>
-
-        <button id="measureDistance" type="button" class="measure-button">
-          📏 Ukur Jarak
-        </button>
-
-        <button id="measureArea" type="button" class="measure-button">
-          ⬛ Ukur Luas
-        </button>
-
-        <div id="measureStatus" class="gps-status">
-          Pilih mode ukur, lalu klik di peta. Klik dua kali / klik terakhir untuk mengakhiri.
-        </div>
-
-        <button id="measureClear" type="button">
-          🗑️ Hapus Pengukuran
-        </button>
-      </section>
-
       <section class="panel legend">
         <h2>Legenda</h2>
         <p><span class="dot high"></span> High</p>
         <p><span class="dot nominal"></span> Nominal</p>
         <p><span class="dot low"></span> Low</p>
+      </section>
+
+      <section class="panel">
+        <h2>Batas Administrasi</h2>
+
+        <label class="check-row">
+          <input type="checkbox" id="toggleKabupaten">
+          Kabupaten / Kota
+        </label>
+
+        <label class="check-row">
+          <input type="checkbox" id="toggleKecamatan">
+          Kecamatan
+        </label>
       </section>
 
       <section class="panel">

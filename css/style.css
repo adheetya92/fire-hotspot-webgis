@@ -180,25 +180,6 @@ select {
 }
 
 
-input[type="file"] {
-  width: 100%;
-
-  padding: 9px;
-
-  border: 1px dashed #cbd5e1;
-
-  border-radius: 7px;
-
-  background: #f8fafc;
-
-  color: #1f2937;
-
-  font-family: inherit;
-
-  font-size: 12px;
-}
-
-
 button {
   margin-top: 12px;
 
@@ -882,61 +863,73 @@ button:active {
 }
 
 
-/* =========================================================
-   TOOLTIP PENGUKURAN
-   ========================================================= */
+/* Status upload KML/KMZ (pola sama dengan .gps-status) */
 
-.measure-tooltip {
-  position: relative;
+.kml-status {
+  margin-top: 10px;
 
-  background: rgba(17, 24, 39, 0.85);
+  padding: 8px;
 
-  color: #ffffff;
+  border-radius: 7px;
 
-  padding: 4px 8px;
+  background: #f1f5f9;
 
-  border-radius: 5px;
+  color: #475569;
 
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
 
-  white-space: nowrap;
-
-  pointer-events: none;
+  line-height: 1.4;
 }
 
 
-.measure-tooltip::before {
-  content: "";
+.kml-status.success {
+  background: #ecfdf5;
 
-  position: absolute;
+  color: #166534;
 
-  bottom: -6px;
-  left: 50%;
-
-  transform: translateX(-50%);
-
-  border: 6px solid transparent;
-  border-top-color: rgba(17, 24, 39, 0.85);
+  border: 1px solid #bbf7d0;
 }
 
 
-.measure-tooltip-static {
-  background: #2563eb;
+.kml-status.error {
+  background: #fef2f2;
+
+  color: #991b1b;
+
+  border: 1px solid #fecaca;
 }
 
 
-.measure-tooltip-static::before {
-  border-top-color: #2563eb;
+/* Baris checkbox toggle layer (mis. batas administrasi) */
+
+.check-row {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  margin: 8px 0 0;
+
+  font-size: 13px;
+
+  font-weight: 400;
+
+  cursor: pointer;
 }
 
 
-.measure-button.active {
-  background: #111827;
+.check-row:first-of-type {
+  margin-top: 0;
+}
 
-  color: #ffffff;
 
-  border-color: #111827;
+.check-row input[type="checkbox"] {
+  width: auto;
+
+  margin: 0;
+
+  cursor: pointer;
 }
 
 
