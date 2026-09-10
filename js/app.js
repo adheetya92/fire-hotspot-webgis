@@ -197,6 +197,33 @@ const kecamatanLayer = new VectorLayer({
 });
 
 
+const kelurahanSource = new VectorSource();
+
+const kelurahanLayer = new VectorLayer({
+
+  source: kelurahanSource,
+
+  // Paling detail -> paling atas di antara batas administrasi
+  zIndex: 7,
+
+  visible: false,
+
+  style: new Style({
+
+    stroke: new Stroke({
+      color: "#94a3b8",
+      width: 0.75,
+      lineDash: [
+        2,
+        3
+      ]
+    })
+
+  })
+
+});
+
+
 // ============================================================
 // MAP
 // ============================================================
@@ -212,6 +239,7 @@ const map = new Map({
     // Batas administrasi (di bawah TNS)
     kabupatenLayer,
     kecamatanLayer,
+    kelurahanLayer,
 
     // TNS Boundary
     tnsLayer,
@@ -1223,6 +1251,12 @@ const adminBoundaryState = {
     loaded: false,
     loading: false,
     url: "data/kecamatan-kalteng.geojson"
+  },
+
+  kelurahan: {
+    loaded: false,
+    loading: false,
+    url: "data/kelurahan-kalteng.geojson"
   }
 
 };
@@ -1316,6 +1350,14 @@ setupAdminBoundaryToggle(
   kecamatanSource,
   "kecamatan",
   "Kecamatan"
+);
+
+setupAdminBoundaryToggle(
+  "toggleKelurahan",
+  kelurahanLayer,
+  kelurahanSource,
+  "kelurahan",
+  "Kelurahan/Desa"
 );
 
 
