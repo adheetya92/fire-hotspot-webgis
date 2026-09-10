@@ -39,6 +39,15 @@ const {
   Overlay
 } = ol;
 
+const {
+  Draw
+} = ol.interaction;
+
+const {
+  getArea,
+  getLength
+} = ol.sphere;
+
 
 // ============================================================
 // BASEMAP
@@ -225,6 +234,54 @@ const kelurahanLayer = new VectorLayer({
 
 
 // ============================================================
+// LAYER UKUR JARAK & LUAS
+// ============================================================
+
+const measureSource = new VectorSource();
+
+const measureLayer = new VectorLayer({
+
+  source: measureSource,
+
+  // Paling atas dari semua layer
+  zIndex: 300,
+
+  style: new Style({
+
+    fill: new Fill({
+      color: "rgba(249, 115, 22, 0.15)"
+    }),
+
+    stroke: new Stroke({
+      color: "#f97316",
+      width: 2,
+      lineDash: [
+        8,
+        8
+      ]
+    }),
+
+    image: new CircleStyle({
+
+      radius: 5,
+
+      fill: new Fill({
+        color: "#f97316"
+      }),
+
+      stroke: new Stroke({
+        color: "#ffffff",
+        width: 1.5
+      })
+
+    })
+
+  })
+
+});
+
+
+// ============================================================
 // MAP
 // ============================================================
 
@@ -245,7 +302,10 @@ const map = new Map({
     tnsLayer,
 
     // Hotspot
-    hotspotLayer
+    hotspotLayer,
+
+    // Ukur jarak & luas (paling atas)
+    measureLayer
 
   ],
 
@@ -1713,6 +1773,387 @@ if (resetButton) {
 
 
       applyFilters();
+
+    }
+  );
+
+}
+
+
+// ============================================================
+// UKUR JARAK & LUAS
+// ============================================================
+
+let measureDrawInteraction = null;
+let measureSketchFeature = null;
+let measureTooltipElement = null;
+let measureTooltipOverlay = null;
+let measureActiveMode = null;
+
+
+function formatLength(lineGeom) {
+
+  const length = getLength(
+    lineGeom,
+    {
+      projection: map.getView().getProjection()
+    }
+  );
+
+  if (length > 1000) {
+
+    return (
+      (length / 1000).toFixed(2) + " km"
+    );
+
+  }
+
+  return Math.round(length) + " m";
+
+}
+
+
+function formatArea(polygonGeom) {
+
+  const area = getArea(
+    polygonGeom,
+    {
+      projection: map.getView().getProjection()
+    }
+  );
+
+  if (area > 1000000) {
+
+    return (
+      (area / 1000000).toFixed(2) + " km²"
+    );
+
+  }
+
+  return Math.round(area) + " m²";
+
+}
+
+
+function createMeasureTooltip() {
+
+  if (measureTooltipOverlay) {
+
+    map.removeOverlay(
+      measureTooltipOverlay
+    );
+
+  }
+
+  measureTooltipElement =
+    document.createElement("div");
+
+  measureTooltipElement.className =
+    "measure-tooltip";
+
+  measureTooltipOverlay = new Overlay({
+
+    element: measureTooltipElement,
+
+    offset: [0, -12],
+
+    positioning: "bottom-center",
+
+    stopEvent: false
+
+  });
+
+  map.addOverlay(
+    measureTooltipOverlay
+  );
+
+}
+
+
+function setMeasureStatus(message) {
+
+  const el =
+    document.getElementById(
+      "measureStatus"
+    );
+
+  if (el) {
+    el.textContent = message;
+  }
+
+}
+
+
+function setMeasureButtonsActive(mode) {
+
+  const distanceBtn =
+    document.getElementById(
+      "measureDistance"
+    );
+
+  const areaBtn =
+    document.getElementById(
+      "measureArea"
+    );
+
+  if (distanceBtn) {
+
+    distanceBtn.classList.toggle(
+      "active",
+      mode === "distance"
+    );
+
+  }
+
+  if (areaBtn) {
+
+    areaBtn.classList.toggle(
+      "active",
+      mode === "area"
+    );
+
+  }
+
+}
+
+
+function stopMeasuring() {
+
+  if (measureDrawInteraction) {
+
+    map.removeInteraction(
+      measureDrawInteraction
+    );
+
+    measureDrawInteraction = null;
+
+  }
+
+  // Buang tooltip yang belum selesai digambar (belum di-drawend)
+  if (
+    measureTooltipOverlay &&
+    measureTooltipElement &&
+    !measureTooltipElement.classList.contains(
+      "measure-tooltip-static"
+    )
+  ) {
+
+    map.removeOverlay(
+      measureTooltipOverlay
+    );
+
+    measureTooltipOverlay = null;
+    measureTooltipElement = null;
+
+  }
+
+  measureActiveMode = null;
+
+  setMeasureButtonsActive(null);
+
+}
+
+
+function startMeasuring(mode) {
+
+  stopMeasuring();
+
+  measureActiveMode = mode;
+
+  setMeasureButtonsActive(mode);
+
+  const geometryType =
+    mode === "area" ? "Polygon" : "LineString";
+
+  setMeasureStatus(
+    mode === "area"
+      ? "Klik untuk menambah titik area, klik dua kali untuk selesai."
+      : "Klik untuk menambah titik garis, klik dua kali untuk selesai."
+  );
+
+  measureDrawInteraction = new Draw({
+    source: measureSource,
+    type: geometryType
+  });
+
+  map.addInteraction(
+    measureDrawInteraction
+  );
+
+  createMeasureTooltip();
+
+  measureDrawInteraction.on(
+    "drawstart",
+    function (event) {
+
+      measureSketchFeature = event.feature;
+
+      measureSketchFeature
+        .getGeometry()
+        .on("change", function (changeEvent) {
+
+          const geom = changeEvent.target;
+
+          let output = "";
+          let tooltipCoord;
+
+          if (geom.getType() === "Polygon") {
+
+            output = formatArea(geom);
+            tooltipCoord = geom.getInteriorPoint().getCoordinates();
+
+          }
+
+          else {
+
+            output = formatLength(geom);
+            tooltipCoord = geom.getLastCoordinate();
+
+          }
+
+          measureTooltipElement.textContent = output;
+
+          measureTooltipOverlay.setPosition(
+            tooltipCoord
+          );
+
+        });
+
+    }
+  );
+
+  measureDrawInteraction.on(
+    "drawend",
+    function () {
+
+      measureTooltipElement.className =
+        "measure-tooltip measure-tooltip-static";
+
+      measureTooltipOverlay.setOffset([0, -7]);
+
+      // Lepas referensi tooltip yang sudah selesai supaya TIDAK
+      // ikut terhapus saat tooltip baru dibuat untuk sketsa berikutnya
+      measureTooltipElement = null;
+      measureTooltipOverlay = null;
+
+      measureSketchFeature = null;
+
+      setMeasureStatus(
+        "Pengukuran selesai. Pilih mode lagi untuk ukur baru, atau hapus."
+      );
+
+      createMeasureTooltip();
+
+    }
+  );
+
+}
+
+
+const measureDistanceButton =
+  document.getElementById(
+    "measureDistance"
+  );
+
+if (measureDistanceButton) {
+
+  measureDistanceButton.addEventListener(
+    "click",
+    function () {
+
+      if (measureActiveMode === "distance") {
+
+        stopMeasuring();
+
+        setMeasureStatus(
+          "Mode ukur jarak dimatikan."
+        );
+
+      }
+
+      else {
+
+        startMeasuring("distance");
+
+      }
+
+    }
+  );
+
+}
+
+
+const measureAreaButton =
+  document.getElementById(
+    "measureArea"
+  );
+
+if (measureAreaButton) {
+
+  measureAreaButton.addEventListener(
+    "click",
+    function () {
+
+      if (measureActiveMode === "area") {
+
+        stopMeasuring();
+
+        setMeasureStatus(
+          "Mode ukur luas dimatikan."
+        );
+
+      }
+
+      else {
+
+        startMeasuring("area");
+
+      }
+
+    }
+  );
+
+}
+
+
+const measureClearButton =
+  document.getElementById(
+    "measureClear"
+  );
+
+if (measureClearButton) {
+
+  measureClearButton.addEventListener(
+    "click",
+    function () {
+
+      stopMeasuring();
+
+      measureSource.clear();
+
+      // Hapus semua tooltip overlay hasil pengukuran
+      map.getOverlays()
+        .getArray()
+        .slice()
+        .forEach(function (overlay) {
+
+          const element = overlay.getElement();
+
+          if (
+            element &&
+            element.classList &&
+            element.classList.contains("measure-tooltip")
+          ) {
+
+            map.removeOverlay(overlay);
+
+          }
+
+        });
+
+      setMeasureStatus(
+        "Pilih mode ukur, lalu klik di peta. Klik dua kali / klik terakhir untuk mengakhiri."
+      );
 
     }
   );
