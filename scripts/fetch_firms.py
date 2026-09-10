@@ -2,6 +2,7 @@ import csv
 import io
 import json
 import os
+import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 
@@ -17,6 +18,20 @@ SOURCES = [
 
 OUTPUT = "data/hotspots.geojson"
 
+# Columns that MUST be present for a response to be treated as a real
+# FIRMS CSV. FIRMS sometimes answers with HTTP 200 but a plain-text error
+# body (e.g. invalid MAP_KEY, exhausted transaction quota) instead of an
+# HTTP error status, so the status code alone can't be trusted.
+REQUIRED_COLUMNS = {
+    "latitude", "longitude", "acq_date", "acq_time",
+    "confidence", "satellite",
+}
+
+
+class FirmsSourceError(RuntimeError):
+    """Raised when a single FIRMS source can't be trusted."""
+
+
 def fetch_csv(source):
     url = (
         "https://firms.modaps.eosdis.nasa.gov/api/area/csv/"
@@ -26,8 +41,56 @@ def fetch_csv(source):
         url,
         headers={"User-Agent": "fire-hotspot-webgis/1.0"}
     )
-    with urllib.request.urlopen(request, timeout=60) as response:
-        return response.read().decode("utf-8")
+
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            status = response.status
+            content_type = response.headers.get("Content-Type", "unknown")
+            raw = response.read()
+    except urllib.error.HTTPError as error:
+        body = error.read().decode("utf-8", errors="replace")[:300]
+        raise FirmsSourceError(
+            f"{source}: HTTP {error.code} from FIRMS. Body preview: {body!r}"
+        ) from error
+    except urllib.error.URLError as error:
+        raise FirmsSourceError(
+            f"{source}: network error contacting FIRMS: {error.reason}"
+        ) from error
+
+    text = raw.decode("utf-8", errors="replace")
+
+    print(
+        f"{source}: HTTP {status}, {len(raw)} bytes, "
+        f"Content-Type={content_type}"
+    )
+
+    if status != 200:
+        raise FirmsSourceError(f"{source}: unexpected HTTP status {status}")
+
+    return validate_csv(source, text)
+
+
+def validate_csv(source, text):
+    """Make sure `text` actually looks like a FIRMS CSV before trusting it.
+
+    FIRMS error messages (bad MAP_KEY, no transactions left, invalid
+    source/area, etc.) typically come back as a short line of plain text
+    with HTTP 200, so we check the header row instead of relying on the
+    status code.
+    """
+
+    reader = csv.DictReader(io.StringIO(text))
+    fieldnames = set(reader.fieldnames or [])
+
+    if not REQUIRED_COLUMNS.issubset(fieldnames):
+        preview = text.strip().splitlines()[:3]
+        raise FirmsSourceError(
+            f"{source}: response is not a valid FIRMS CSV "
+            f"(missing columns {sorted(REQUIRED_COLUMNS - fieldnames)}). "
+            f"Response preview: {preview!r}"
+        )
+
+    return list(reader)
 
 def make_feature(row):
     try:
@@ -62,9 +125,14 @@ def main():
 
     for source in SOURCES:
         print(f"Downloading {source}...")
-        text = fetch_csv(source)
 
-        for row in csv.DictReader(io.StringIO(text)):
+        # Raises FirmsSourceError if the HTTP status, Content-Type, or CSV
+        # header don't look like a real FIRMS response.
+        rows = fetch_csv(source)
+
+        valid_before = len(features)
+
+        for row in rows:
             feature = make_feature(row)
             if feature is None:
                 continue
@@ -85,6 +153,23 @@ def main():
 
             seen.add(key)
             features.append(feature)
+
+        valid_added = len(features) - valid_before
+
+        print(
+            f"{source}: CSV rows={len(rows)}, "
+            f"valid unique features={valid_added}"
+        )
+
+    # A structurally valid CSV can still legitimately contain zero
+    # detections for one satellite pass. What we must never do is silently
+    # overwrite good historical data with an empty FeatureCollection, so we
+    # only fail once *every* source combined produced nothing.
+    if not features:
+        raise FirmsSourceError(
+            "All FIRMS sources returned 0 valid features. Refusing to "
+            f"overwrite {OUTPUT} with an empty FeatureCollection."
+        )
 
     generated_at = datetime.now(timezone.utc).isoformat()
 
