@@ -180,7 +180,7 @@ def main():
             "source": "NASA FIRMS",
             "sources": SOURCES,
             "area": AREA,
-            "day_range": 1
+            "day_range": 2
         },
         "features": features
     }
