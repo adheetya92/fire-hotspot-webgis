@@ -2,7 +2,7 @@
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     <name>Fire Hotspots - Kalimantan Tengah</name>
-    <description>NASA FIRMS VIIRS hotspots filtered to Kabupaten/Kota Kalimantan Tengah. Generated at 2026-09-11T05:56:45.672537+00:00 UTC. 2706 of 14184 points retained.</description>
+    <description>NASA FIRMS VIIRS hotspots filtered to Kabupaten/Kota Kalimantan Tengah. Generated at 2026-09-11T06:08:40.282994+00:00 UTC. 2706 of 16422 points retained.</description>
     
     <Style id="hotspot-high">
       <IconStyle>
