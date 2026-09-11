@@ -3137,6 +3137,237 @@ if (gpsFollowButton) {
 
 
 // ============================================================
+// DOWNLOAD HOTSPOT KALTENG (KML)
+// ============================================================
+//
+// Bounding box Kalimantan Tengah (WGS 84):
+//   Barat  : 110.5°  Timur  : 116.2°
+//   Selatan:  -4.9°  Utara  :   0.2°
+
+const KALTENG_BBOX = {
+  minLon: 110.5,
+  maxLon: 116.2,
+  minLat: -4.9,
+  maxLat:  0.2
+};
+
+
+function featureInKalteng(feature) {
+
+  const lo = parseFloat(feature.get("longitude"));
+  const la = parseFloat(feature.get("latitude"));
+
+  if (!Number.isFinite(lo) || !Number.isFinite(la)) {
+    return false;
+  }
+
+  return (
+    lo >= KALTENG_BBOX.minLon &&
+    lo <= KALTENG_BBOX.maxLon &&
+    la >= KALTENG_BBOX.minLat &&
+    la <= KALTENG_BBOX.maxLat
+  );
+
+}
+
+
+function featureMatchesActiveFilter(feature) {
+
+  const confidenceEl =
+    document.getElementById("confidence");
+
+  const satelliteEl =
+    document.getElementById("satellite");
+
+  const confidence =
+    confidenceEl ? confidenceEl.value : "all";
+
+  const satellite =
+    satelliteEl ? satelliteEl.value : "all";
+
+  const c = normalizeConfidence(
+    feature.get("confidence")
+  );
+
+  const s = String(
+    feature.get("satellite") ?? ""
+  ).toUpperCase();
+
+  const confidenceOK =
+    confidence === "all" || c === confidence;
+
+  const satelliteOK =
+    satellite === "all" ||
+    s.includes(satellite.toUpperCase());
+
+  return confidenceOK && satelliteOK;
+
+}
+
+
+function _xmlEscape(value) {
+
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+}
+
+
+function buildKaltengKML(features) {
+
+  const styleBlock = `
+  <Style id="high">
+    <IconStyle>
+      <color>ff2222dc</color>
+      <scale>0.9</scale>
+      <Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon>
+    </IconStyle>
+  </Style>
+  <Style id="nominal">
+    <IconStyle>
+      <color>ff00a5ff</color>
+      <scale>0.8</scale>
+      <Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon>
+    </IconStyle>
+  </Style>
+  <Style id="low">
+    <IconStyle>
+      <color>ff00e5ff</color>
+      <scale>0.7</scale>
+      <Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon>
+    </IconStyle>
+  </Style>`;
+
+
+  const placemarks = features.map(function (f) {
+
+    const lon  = parseFloat(f.get("longitude"));
+    const lat  = parseFloat(f.get("latitude"));
+    const norm = normalizeConfidence(f.get("confidence"));
+
+    const confLabel =
+      norm === "high"    ? "High"    :
+      norm === "nominal" ? "Nominal" : "Low";
+
+    const acqDate = _xmlEscape(f.get("acq_date") ?? "");
+    const acqTime = _xmlEscape(f.get("acq_time") ?? "");
+    const sat     = _xmlEscape(f.get("satellite") ?? "");
+    const frp     = _xmlEscape(f.get("frp") ?? "");
+
+    return (
+      "  <Placemark>\n" +
+      `    <name>Hotspot ${acqDate} ${acqTime}</name>\n` +
+      `    <styleUrl>#${norm}</styleUrl>\n` +
+      "    <description><![CDATA[" +
+        `Confidence: ${confLabel}<br/>` +
+        `Satelit: ${sat}<br/>` +
+        `FRP: ${frp} MW<br/>` +
+        `Tanggal: ${acqDate} ${acqTime} UTC` +
+      "]]></description>\n" +
+      `    <Point><coordinates>${lon},${lat},0</coordinates></Point>\n` +
+      "  </Placemark>"
+    );
+
+  });
+
+
+  const now = new Date().toISOString();
+
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<kml xmlns="http://www.opengis.net/kml/2.2">\n' +
+    "<Document>\n" +
+    "  <name>Hotspot Kalimantan Tengah - NASA FIRMS</name>\n" +
+    `  <description>Diekspor: ${_xmlEscape(now)}. Sumber: NASA FIRMS (VIIRS NOAA-20/NOAA-21).</description>\n` +
+    styleBlock + "\n" +
+    placemarks.join("\n") + "\n" +
+    "</Document>\n</kml>\n"
+  );
+
+}
+
+
+function setDownloadStatus(message, type) {
+
+  const el = document.getElementById("downloadStatus");
+
+  if (!el) {
+    return;
+  }
+
+  el.hidden = false;
+  el.className = "kml-status" + (type ? " " + type : "");
+  el.textContent = message;
+
+}
+
+
+const downloadKMLButton =
+  document.getElementById("downloadKML");
+
+if (downloadKMLButton) {
+
+  downloadKMLButton.addEventListener("click", function () {
+
+    if (!allFeatures || !allFeatures.length) {
+
+      setDownloadStatus(
+        "Data hotspot belum tersedia.",
+        "error"
+      );
+
+      return;
+
+    }
+
+    // Filter: masuk bbox Kalteng + cocok filter sidebar aktif
+    const filtered = allFeatures.filter(function (f) {
+
+      return featureInKalteng(f) && featureMatchesActiveFilter(f);
+
+    });
+
+    if (!filtered.length) {
+
+      setDownloadStatus(
+        "Tidak ada hotspot di Kalimantan Tengah untuk filter yang aktif.",
+        "error"
+      );
+
+      return;
+
+    }
+
+    const kmlText  = buildKaltengKML(filtered);
+    const blob     = new Blob(
+      [kmlText],
+      { type: "application/vnd.google-earth.kml+xml" }
+    );
+    const url      = URL.createObjectURL(blob);
+    const dateStr  = new Date().toISOString().slice(0, 10);
+    const filename = `hotspot-kalteng-${dateStr}.kml`;
+
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = filename;
+    a.click();
+
+    URL.revokeObjectURL(url);
+
+    setDownloadStatus(
+      `${filtered.length} titik diunduh sebagai ${filename}.`,
+      "success"
+    );
+
+  });
+
+}
+
+
+// ============================================================
 // INITIAL GPS CHECK
 // ============================================================
 

@@ -1021,3 +1021,13 @@ button:active {
 
   border-color: #111827;
 }
+
+
+/* Teks keterangan kecil di panel Download */
+
+.download-info {
+  font-size: 11px;
+  color: #64748b;
+  margin: 0 0 10px;
+  line-height: 1.4;
+}
