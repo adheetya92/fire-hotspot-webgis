@@ -1705,6 +1705,268 @@ if (kmlUploadButton && kmlUploadInput) {
 
 
 // ============================================================
+// UPLOAD SHAPEFILE (.zip berisi .shp + .dbf + .prj)
+// ============================================================
+//
+// Shapefile tidak bisa dibaca per-file karena butuh minimal 3 file
+// sekaligus (.shp, .dbf, .prj). Cara paling praktis: user meng-zip
+// folder/file SHP-nya terlebih dahulu, lalu upload satu file .zip.
+// Library shpjs membaca zip tersebut dan menghasilkan GeoJSON yang
+// kemudian langsung dirender oleh OpenLayers.
+
+const shpSource = new VectorSource();
+
+const shpLayer = new VectorLayer({
+
+  source: shpSource,
+
+  // Di atas KML layer, di bawah hotspot
+  zIndex: 65,
+
+  style: function (feature) {
+
+    const geomType = feature.getGeometry().getType();
+
+    // Point
+    if (geomType === "Point" || geomType === "MultiPoint") {
+
+      return new Style({
+
+        image: new CircleStyle({
+
+          radius: 6,
+
+          fill: new Fill({ color: "#7c3aed" }),
+
+          stroke: new Stroke({
+            color: "#ffffff",
+            width: 1.5
+          })
+
+        })
+
+      });
+
+    }
+
+    // Line
+    if (
+      geomType === "LineString" ||
+      geomType === "MultiLineString"
+    ) {
+
+      return new Style({
+
+        stroke: new Stroke({
+          color: "#7c3aed",
+          width: 2
+        })
+
+      });
+
+    }
+
+    // Polygon / area
+    return new Style({
+
+      fill: new Fill({
+        color: "rgba(124, 58, 237, 0.15)"
+      }),
+
+      stroke: new Stroke({
+        color: "#7c3aed",
+        width: 2
+      })
+
+    });
+
+  }
+
+});
+
+map.addLayer(shpLayer);
+
+
+const shpUploadButton =
+  document.getElementById("shpUploadButton");
+
+const shpUploadInput =
+  document.getElementById("shpUpload");
+
+
+function addSHPFeatures(geojson, fileName) {
+
+  const format = new ol.format.GeoJSON();
+
+  let features = [];
+
+  try {
+
+    // shpjs bisa kembalikan FeatureCollection tunggal atau array
+    // (kalau ada multiple layer dalam satu zip)
+    const collections =
+      Array.isArray(geojson) ? geojson : [geojson];
+
+    for (const collection of collections) {
+
+      if (!collection || !collection.features) {
+        continue;
+      }
+
+      const parsed = format.readFeatures(collection, {
+        dataProjection: "EPSG:4326",
+        featureProjection: "EPSG:3857"
+      });
+
+      features = features.concat(parsed);
+
+    }
+
+  }
+
+  catch (error) {
+
+    console.error("Gagal parsing SHP ke fitur OL:", error);
+
+    setKMLStatus(
+      `${fileName}: gagal mengonversi fitur shapefile.`,
+      "error"
+    );
+
+    return;
+
+  }
+
+  if (!features.length) {
+
+    setKMLStatus(
+      `${fileName}: tidak ada fitur yang bisa ditampilkan.`,
+      "error"
+    );
+
+    return;
+
+  }
+
+  shpSource.clear();
+  shpSource.addFeatures(features);
+
+  setKMLStatus(
+    `${fileName}: ${features.length} fitur SHP dimuat.`,
+    "success"
+  );
+
+  // Zoom ke extent data SHP
+  const extent = shpSource.getExtent();
+
+  const isValid =
+    extent && extent.every(function (v) {
+      return Number.isFinite(v);
+    });
+
+  if (isValid) {
+
+    map.getView().fit(extent, {
+      padding: [50, 50, 50, 50],
+      duration: 1000,
+      maxZoom: 16
+    });
+
+  }
+
+}
+
+
+function handleSHPFile(file) {
+
+  const name = file.name || "file";
+
+  if (!name.toLowerCase().endsWith(".zip")) {
+
+    setKMLStatus(
+      "Upload SHP harus berupa file .zip yang berisi .shp, .dbf, dan .prj.",
+      "error"
+    );
+
+    return;
+
+  }
+
+  if (typeof shp === "undefined") {
+
+    setKMLStatus(
+      "Library shapefile gagal dimuat. Coba refresh halaman.",
+      "error"
+    );
+
+    return;
+
+  }
+
+  setKMLStatus("Memuat shapefile...");
+
+  const reader = new FileReader();
+
+  reader.onload = function () {
+
+    shp(reader.result)
+      .then(function (geojson) {
+        addSHPFeatures(geojson, name);
+      })
+      .catch(function (error) {
+
+        console.error("Gagal membaca SHP:", error);
+
+        setKMLStatus(
+          `${name}: gagal dibaca. Pastikan zip berisi file .shp, .dbf, dan .prj.`,
+          "error"
+        );
+
+      });
+
+  };
+
+  reader.onerror = function () {
+    setKMLStatus(`Gagal membaca ${name}.`, "error");
+  };
+
+  reader.readAsArrayBuffer(file);
+
+}
+
+
+if (shpUploadButton && shpUploadInput) {
+
+  shpUploadButton.addEventListener(
+    "click",
+    function () {
+      shpUploadInput.click();
+    }
+  );
+
+  shpUploadInput.addEventListener(
+    "change",
+    function () {
+
+      const file =
+        shpUploadInput.files &&
+        shpUploadInput.files[0];
+
+      if (!file) {
+        return;
+      }
+
+      handleSHPFile(file);
+
+      shpUploadInput.value = "";
+
+    }
+  );
+
+}
+
+
+// ============================================================
 // FILTER EVENTS
 // ============================================================
 

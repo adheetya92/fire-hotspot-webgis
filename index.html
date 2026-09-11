@@ -100,6 +100,17 @@
         <button id="kmlUploadButton" type="button">
           📂 Upload KML/KMZ
         </button>
+
+        <input
+          id="shpUpload"
+          type="file"
+          accept=".zip"
+          hidden
+        >
+        <button id="shpUploadButton" type="button">
+          📂 Upload SHP (.zip)
+        </button>
+
         <div id="kmlStatus" class="kml-status" hidden></div>
       </section>
 
@@ -175,6 +186,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/ol@10.6.1/dist/ol.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/shpjs@6.1.0/dist/shp.min.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
