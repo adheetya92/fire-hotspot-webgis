@@ -20,6 +20,8 @@ NASA FIRMS → GitHub Actions → GeoJSON → GitHub Pages → OpenLayers
 
 ## Catatan
 
+## Tes wildan
+
 Data default `data/hotspots.geojson` hanyalah data contoh. Setelah workflow berjalan, file tersebut akan diganti oleh data FIRMS terbaru.
 
 ## Pengembangan berikutnya
