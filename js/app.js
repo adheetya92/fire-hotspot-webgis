@@ -234,6 +234,40 @@ const kelurahanLayer = new VectorLayer({
 
 
 // ============================================================
+// LAYER PIAPS (Peta Indikatif Areal Perhutanan Sosial)
+// ============================================================
+//
+// Dipakai pola yang sama seperti batas administrasi: transparan
+// tipis + garis tegas supaya hotspot di dalamnya tetap terlihat.
+
+const piapsSource = new VectorSource();
+
+const piapsLayer = new VectorLayer({
+
+  source: piapsSource,
+
+  // Di atas kelurahan, di bawah TNS
+  zIndex: 8,
+
+  visible: false,
+
+  style: new Style({
+
+    fill: new Fill({
+      color: "rgba(168, 85, 247, 0.15)"
+    }),
+
+    stroke: new Stroke({
+      color: "#7e22ce",
+      width: 1.5
+    })
+
+  })
+
+});
+
+
+// ============================================================
 // LAYER UKUR JARAK & LUAS
 // ============================================================
 
@@ -297,6 +331,9 @@ const map = new Map({
     kabupatenLayer,
     kecamatanLayer,
     kelurahanLayer,
+
+    // PIAPS
+    piapsLayer,
 
     // TNS Boundary
     tnsLayer,
@@ -652,6 +689,112 @@ function showHotspotPopup(
 
 
 // ============================================================
+// SHOW PIAPS POPUP
+// ============================================================
+
+function showPiapsPopup(
+  feature,
+  coordinate
+) {
+
+  const p =
+    feature.getProperties();
+
+  popupContent.innerHTML = `
+
+    <div class="popup-title">
+      🌳 Kawasan PIAPS
+    </div>
+
+    <table class="popup-table">
+
+      <tr>
+        <td>Kriteria</td>
+        <td>
+          ${escapeHTML(
+            formatValue(p.Kriteria)
+          )}
+        </td>
+      </tr>
+
+      <tr>
+        <td>Keterangan</td>
+        <td>
+          ${escapeHTML(
+            formatValue(p.KETERANGAN)
+          )}
+        </td>
+      </tr>
+
+      <tr>
+        <td>Fungsi Kawasan</td>
+        <td>
+          ${escapeHTML(
+            formatValue(p.F_KWS)
+          )}
+        </td>
+      </tr>
+
+      <tr>
+        <td>Luas (Ha)</td>
+        <td>
+          ${escapeHTML(
+            formatValue(p.Luas_CEA)
+          )}
+        </td>
+      </tr>
+
+      <tr>
+        <td>Provinsi</td>
+        <td>
+          ${escapeHTML(
+            formatValue(p.WADMPR)
+          )}
+        </td>
+      </tr>
+
+      <tr>
+        <td>Kabupaten/Kota</td>
+        <td>
+          ${escapeHTML(
+            formatValue(p.WADMKK)
+          )}
+        </td>
+      </tr>
+
+      <tr>
+        <td>Kecamatan</td>
+        <td>
+          ${escapeHTML(
+            formatValue(p.WADMKC)
+          )}
+        </td>
+      </tr>
+
+      <tr>
+        <td>Kelurahan/Desa</td>
+        <td>
+          ${escapeHTML(
+            formatValue(p.WADMKD)
+          )}
+        </td>
+      </tr>
+
+    </table>
+
+  `;
+
+
+  popup.hidden = false;
+
+  popupOverlay.setPosition(
+    coordinate
+  );
+
+}
+
+
+// ============================================================
 // CLOSE POPUP WHEN MOVING MAP
 // ============================================================
 
@@ -677,8 +820,11 @@ map.on(
   "singleclick",
   function (event) {
 
-    let hotspotFound = false;
+    let popupShown = false;
 
+    // --------------------------------------------------------
+    // 1) Coba cek hotspot dulu (prioritas paling atas)
+    // --------------------------------------------------------
     map.forEachFeatureAtPixel(
 
       event.pixel,
@@ -688,7 +834,6 @@ map.on(
         layer
       ) {
 
-        // Hanya hotspot yang dapat diklik
         if (
           layer !== hotspotLayer
         ) {
@@ -697,7 +842,7 @@ map.on(
 
         }
 
-        hotspotFound = true;
+        popupShown = true;
 
         showHotspotPopup(
           feature,
@@ -726,7 +871,63 @@ map.on(
     );
 
 
-    if (!hotspotFound) {
+    // --------------------------------------------------------
+    // 2) Kalau bukan hotspot, cek layer PIAPS
+    // --------------------------------------------------------
+    if (
+      !popupShown &&
+      piapsLayer.getVisible()
+    ) {
+
+      map.forEachFeatureAtPixel(
+
+        event.pixel,
+
+        function (
+          feature,
+          layer
+        ) {
+
+          if (
+            layer !== piapsLayer
+          ) {
+
+            return false;
+
+          }
+
+          popupShown = true;
+
+          showPiapsPopup(
+            feature,
+            event.coordinate
+          );
+
+          return true;
+
+        },
+
+        {
+
+          hitTolerance: 8,
+
+          layerFilter:
+            function (layer) {
+
+              return (
+                layer === piapsLayer
+              );
+
+            }
+
+        }
+
+      );
+
+    }
+
+
+    if (!popupShown) {
 
       popupOverlay.setPosition(
         undefined
@@ -1317,6 +1518,12 @@ const adminBoundaryState = {
     loaded: false,
     loading: false,
     url: "data/kelurahan-kalteng.geojson"
+  },
+
+  piaps: {
+    loaded: false,
+    loading: false,
+    url: "data/piaps-kalteng.geojson"
   }
 
 };
@@ -1418,6 +1625,14 @@ setupAdminBoundaryToggle(
   kelurahanSource,
   "kelurahan",
   "Kelurahan/Desa"
+);
+
+setupAdminBoundaryToggle(
+  "togglePiaps",
+  piapsLayer,
+  piapsSource,
+  "piaps",
+  "PIAPS IX Kalteng"
 );
 
 
