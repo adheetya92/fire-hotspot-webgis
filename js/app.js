@@ -268,6 +268,40 @@ const piapsLayer = new VectorLayer({
 
 
 // ============================================================
+// LAYER PERHUTANAN SOSIAL DAMPINGAN BNF
+// ============================================================
+//
+// Pola sama persis dengan layer PIAPS, warna dibedakan supaya
+// tidak tertukar saat kedua layer aktif bersamaan.
+
+const psDampinganBnfSource = new VectorSource();
+
+const psDampinganBnfLayer = new VectorLayer({
+
+  source: psDampinganBnfSource,
+
+  // Sejajar dengan PIAPS, di atas kelurahan, di bawah TNS
+  zIndex: 8,
+
+  visible: false,
+
+  style: new Style({
+
+    fill: new Fill({
+      color: "rgba(234, 88, 12, 0.15)"
+    }),
+
+    stroke: new Stroke({
+      color: "#c2410c",
+      width: 1.5
+    })
+
+  })
+
+});
+
+
+// ============================================================
 // LAYER UKUR JARAK & LUAS
 // ============================================================
 
@@ -334,6 +368,7 @@ const map = new Map({
 
     // PIAPS
     piapsLayer,
+    psDampinganBnfLayer,
 
     // TNS Boundary
     tnsLayer,
@@ -795,6 +830,103 @@ function showPiapsPopup(
 
 
 // ============================================================
+// SHOW PERHUTANAN SOSIAL DAMPINGAN BNF POPUP
+// ============================================================
+
+function showPsDampinganBnfPopup(
+  feature,
+  coordinate
+) {
+
+  const p =
+    feature.getProperties();
+
+  popupContent.innerHTML = `
+
+    <div class="popup-title">
+      🌿 Perhutanan Sosial Dampingan BNF
+    </div>
+
+    <table class="popup-table">
+
+      <tr>
+        <td>Nama</td>
+        <td>
+          ${escapeHTML(
+            formatValue(p.NAMOBJ)
+          )}
+        </td>
+      </tr>
+
+      <tr>
+        <td>Skema</td>
+        <td>
+          ${escapeHTML(
+            formatValue(p.SKEMA)
+          )}
+        </td>
+      </tr>
+
+      <tr>
+        <td>Luas (Ha)</td>
+        <td>
+          ${escapeHTML(
+            formatValue(p.LUAS)
+          )}
+        </td>
+      </tr>
+
+      <tr>
+        <td>No. SK</td>
+        <td>
+          ${escapeHTML(
+            formatValue(p.SK)
+          )}
+        </td>
+      </tr>
+
+      <tr>
+        <td>Keterangan</td>
+        <td>
+          ${escapeHTML(
+            formatValue(p.KETERANGAN)
+          )}
+        </td>
+      </tr>
+
+      <tr>
+        <td>Kecamatan</td>
+        <td>
+          ${escapeHTML(
+            formatValue(p.WADMKC)
+          )}
+        </td>
+      </tr>
+
+      <tr>
+        <td>Kelurahan/Desa</td>
+        <td>
+          ${escapeHTML(
+            formatValue(p.WADMKD)
+          )}
+        </td>
+      </tr>
+
+    </table>
+
+  `;
+
+
+  popup.hidden = false;
+
+  popupOverlay.setPosition(
+    coordinate
+  );
+
+}
+
+
+// ============================================================
 // CLOSE POPUP WHEN MOVING MAP
 // ============================================================
 
@@ -916,6 +1048,62 @@ map.on(
 
               return (
                 layer === piapsLayer
+              );
+
+            }
+
+        }
+
+      );
+
+    }
+
+
+    // --------------------------------------------------------
+    // 3) Kalau masih belum kena, cek layer PS Dampingan BNF
+    // --------------------------------------------------------
+    if (
+      !popupShown &&
+      psDampinganBnfLayer.getVisible()
+    ) {
+
+      map.forEachFeatureAtPixel(
+
+        event.pixel,
+
+        function (
+          feature,
+          layer
+        ) {
+
+          if (
+            layer !== psDampinganBnfLayer
+          ) {
+
+            return false;
+
+          }
+
+          popupShown = true;
+
+          showPsDampinganBnfPopup(
+            feature,
+            event.coordinate
+          );
+
+          return true;
+
+        },
+
+        {
+
+          hitTolerance: 8,
+
+          layerFilter:
+            function (layer) {
+
+              return (
+                layer === psDampinganBnfLayer
               );
 
             }
@@ -1524,6 +1712,12 @@ const adminBoundaryState = {
     loaded: false,
     loading: false,
     url: "data/piaps-kalteng.geojson"
+  },
+
+  psDampinganBnf: {
+    loaded: false,
+    loading: false,
+    url: "data/ps-dampingan-bnf.geojson"
   }
 
 };
@@ -1633,6 +1827,14 @@ setupAdminBoundaryToggle(
   piapsSource,
   "piaps",
   "PIAPS IX Kalteng"
+);
+
+setupAdminBoundaryToggle(
+  "togglePsDampinganBnf",
+  psDampinganBnfLayer,
+  psDampinganBnfSource,
+  "psDampinganBnf",
+  "Perhutanan Sosial Dampingan BNF"
 );
 
 
