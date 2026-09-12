@@ -1031,3 +1031,52 @@ button:active {
   margin: 0 0 10px;
   line-height: 1.4;
 }
+
+
+/* =========================================================
+   BASEMAP SWITCHER (floating di pojok kanan atas peta)
+   ========================================================= */
+
+.basemap-switcher {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 400;
+
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(4px);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  padding: 8px 12px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 150px;
+}
+
+.basemap-switcher-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.basemap-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #1e293b;
+  cursor: pointer;
+  font-weight: 400;
+  margin: 0;
+}
+
+.basemap-option input[type="radio"] {
+  width: auto;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #f97316;
+}
