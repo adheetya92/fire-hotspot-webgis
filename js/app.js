@@ -78,23 +78,23 @@ const hotspotLayer = new VectorLayer({
 
   style: function (feature) {
 
+    // Gunakan normalizeConfidence supaya "h"/"n"/"l" maupun
+    // "high"/"nominal"/"low" maupun angka 0-100 semua ditangani
     const confidence =
-      String(feature.get("confidence") ?? "")
-        .trim()
-        .toLowerCase();
+      normalizeConfidence(
+        feature.get("confidence")
+      );
 
-    let color = "#eab308";
+    let color;
 
     if (confidence === "high") {
-      color = "#dc2626";
+      color = "#dc2626";      // merah
     }
-
     else if (confidence === "nominal") {
-      color = "#f97316";
+      color = "#f97316";      // oranye
     }
-
-    else if (confidence === "low") {
-      color = "#eab308";
+    else {
+      color = "#eab308";      // kuning (low / unknown)
     }
 
     return new Style({
