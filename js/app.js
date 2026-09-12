@@ -3041,7 +3041,15 @@ loadHotspots();
 
 loadTNSBoundary();
 
-initWilayahFilter();
+// NOTE: initWilayahFilter() TIDAK dipanggil di sini lagi.
+// Fungsi ini butuh variabel `wilayahAdminData`/`wilayahAdminFeats` (let)
+// dan fungsi-fungsi filter wilayah yang baru dideklarasikan lebih jauh
+// di bawah dalam file ini. Karena deklarasi `let` punya "temporal dead
+// zone", memanggilnya di sini (sebelum baris deklarasinya dieksekusi)
+// menyebabkan ReferenceError: "Cannot access 'wilayahAdminData' before
+// initialization" — akibatnya dropdown Kabupaten/Kecamatan/Kelurahan
+// kosong. Panggilannya dipindah ke akhir file, setelah semua fungsi
+// dan variabel filter wilayah selesai didefinisikan.
 
 
 // ============================================================
@@ -4217,6 +4225,22 @@ async function initWilayahFilter() {
   }
   catch (err) {
     console.error("Gagal inisialisasi filter wilayah:", err);
+
+    if (filterKabEl) {
+      filterKabEl.innerHTML =
+        '<option value="">⚠️ Gagal memuat data wilayah</option>';
+    }
+
+    const el = document.getElementById("wilayahHotspotResult");
+    if (el) {
+      el.hidden = false;
+      el.innerHTML =
+        '<div class="wr-title" style="color:#c0392b">' +
+        'Gagal memuat data wilayah (kelurahan-kalteng.geojson). ' +
+        'Buka Console (F12) untuk detail error. Pastikan situs diakses ' +
+        'lewat server/https (GitHub Pages), bukan dibuka langsung dari file.' +
+        '</div>';
+    }
   }
 
 }
@@ -4334,3 +4358,5 @@ if (resetWilayah) {
 // ============================================================
 
 checkGPSSupport();
+
+initWilayahFilter();
