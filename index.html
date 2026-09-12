@@ -18,6 +18,7 @@
 
   <main class="app">
     <aside class="sidebar">
+
       <section class="panel">
         <h2>Filter</h2>
         <!-- =====================================================
@@ -203,6 +204,31 @@
 
     <section class="map-wrap">
       <div id="map"></div>
+
+      <!-- Basemap switcher floating di pojok kanan atas peta -->
+      <div class="basemap-switcher">
+        <span class="basemap-switcher-title">🗺️ Basemap</span>
+
+        <label class="basemap-option">
+          <input
+            type="radio"
+            name="basemap"
+            value="osm"
+            checked
+          >
+          OpenStreetMap
+        </label>
+
+        <label class="basemap-option">
+          <input
+            type="radio"
+            name="basemap"
+            value="google"
+          >
+          Google Satellite
+        </label>
+      </div>
+
       <div id="popup" class="popup" hidden>
         <button id="popupClose">×</button>
         <div id="popupContent"></div>

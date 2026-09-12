@@ -17,6 +17,7 @@ const {
 
 const {
   OSM,
+  XYZ,
   Vector: VectorSource
 } = ol.source;
 
@@ -53,8 +54,22 @@ const {
 // BASEMAP
 // ============================================================
 
+// OSM (default)
 const baseLayer = new TileLayer({
-  source: new OSM()
+  source: new OSM(),
+  zIndex: 0
+});
+
+// Google Maps Satellite (XYZ tile, tidak perlu API key)
+const googleLayer = new TileLayer({
+  source: new XYZ({
+    url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+    maxZoom:     20,
+    crossOrigin: "anonymous",
+    attributions: "© Google"
+  }),
+  zIndex:  0,
+  visible: false
 });
 
 
@@ -360,6 +375,7 @@ const map = new Map({
   layers: [
 
     baseLayer,
+    googleLayer,
 
     // Batas administrasi (di bawah TNS)
     kabupatenLayer,
@@ -3782,6 +3798,29 @@ if (downloadKMLButton) {
   });
 
 }
+
+
+// ============================================================
+// BASEMAP TOGGLE
+// ============================================================
+
+const basemapRadios =
+  document.querySelectorAll(
+    'input[name="basemap"]'
+  );
+
+basemapRadios.forEach(function (radio) {
+
+  radio.addEventListener("change", function () {
+
+    const val = radio.value;
+
+    baseLayer.setVisible(val === "osm");
+    googleLayer.setVisible(val === "google");
+
+  });
+
+});
 
 
 // ============================================================
