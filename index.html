@@ -150,6 +150,31 @@
       </section>
 
       <section class="panel">
+        <h2>🏘️ Hotspot per Wilayah</h2>
+
+        <label for="filterKabupaten">Kabupaten / Kota</label>
+        <select id="filterKabupaten">
+          <option value="">— Pilih Kabupaten/Kota —</option>
+        </select>
+
+        <label for="filterKecamatan">Kecamatan</label>
+        <select id="filterKecamatan" disabled>
+          <option value="">— Pilih Kecamatan —</option>
+        </select>
+
+        <label for="filterKelurahan">Kelurahan / Desa</label>
+        <select id="filterKelurahan" disabled>
+          <option value="">— Pilih Kelurahan/Desa —</option>
+        </select>
+
+        <div id="wilayahHotspotResult" class="wilayah-result" hidden></div>
+
+        <button id="resetWilayahFilter" type="button">
+          Reset
+        </button>
+      </section>
+
+      <section class="panel">
         <h2>⬇️ Download Hotspot</h2>
         <p class="download-info">
           Khusus wilayah Kalimantan Tengah,
@@ -191,6 +216,11 @@
         <label class="check-row">
           <input type="checkbox" id="togglePsDampinganBnf">
           Perhutanan Sosial Dampingan BNF
+        </label>
+
+        <label class="check-row">
+          <input type="checkbox" id="toggleBlokPenanamanBnf">
+          Lokasi Blok Penanaman BNF
         </label>
       </section>
 

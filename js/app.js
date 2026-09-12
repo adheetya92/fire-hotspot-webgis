@@ -317,6 +317,36 @@ const psDampinganBnfLayer = new VectorLayer({
 
 
 // ============================================================
+// LAYER LOKASI BLOK PENANAMAN BNF
+// ============================================================
+
+const blokPenanamanBnfSource = new VectorSource();
+
+const blokPenanamanBnfLayer = new VectorLayer({
+
+  source: blokPenanamanBnfSource,
+
+  zIndex: 9,
+
+  visible: false,
+
+  style: new Style({
+
+    fill: new Fill({
+      color: "rgba(22, 163, 74, 0.2)"
+    }),
+
+    stroke: new Stroke({
+      color: "#15803d",
+      width: 1.5
+    })
+
+  })
+
+});
+
+
+// ============================================================
 // LAYER UKUR JARAK & LUAS
 // ============================================================
 
@@ -385,6 +415,7 @@ const map = new Map({
     // PIAPS
     piapsLayer,
     psDampinganBnfLayer,
+    blokPenanamanBnfLayer,
 
     // TNS Boundary
     tnsLayer,
@@ -943,6 +974,94 @@ function showPsDampinganBnfPopup(
 
 
 // ============================================================
+// SHOW BLOK PENANAMAN BNF POPUP
+// ============================================================
+
+function parseBlokPenanamanDesc(html) {
+
+  // Field tersimpan dalam HTML table di dalam property "description"
+  // Format: <td>KEY</td>\n\n<td>VALUE</td>
+  const result = {};
+
+  const rows =
+    html.match(
+      /<td>([^<]+)<\/td>\s*\n\s*\n\s*<td>([^<]*)<\/td>/g
+    ) || [];
+
+  rows.forEach(function (row) {
+
+    const cells = row.match(/<td>([^<]*)<\/td>/g) || [];
+
+    if (cells.length >= 2) {
+
+      const key =
+        cells[0].replace(/<\/?td>/g, "").trim();
+
+      const val =
+        cells[1].replace(/<\/?td>/g, "").trim();
+
+      if (key && key !== "FID") {
+        result[key] = val;
+      }
+
+    }
+
+  });
+
+  return result;
+
+}
+
+
+function showBlokPenanamanBnfPopup(feature, coordinate) {
+
+  const p    = feature.getProperties();
+  const name = p.Name || "-";
+  const desc = parseBlokPenanamanDesc(p.description || "");
+
+  const row = function (label, key) {
+    const val = desc[key] || "-";
+    return `
+      <tr>
+        <td>${label}</td>
+        <td>${escapeHTML(val)}</td>
+      </tr>`;
+  };
+
+  popupContent.innerHTML = `
+    <div class="popup-title">
+      🌱 Blok Penanaman BNF
+    </div>
+    <table class="popup-table">
+      <tr>
+        <td>Tahun</td>
+        <td><strong>${escapeHTML(name)}</strong></td>
+      </tr>
+      ${row("Keterangan",  "Keterangan")}
+      ${row("Kawasan",     "Kawasan")}
+      ${row("Zona",        "Zona")}
+      ${row("Kanal",       "Kanal")}
+      ${row("Resort",      "Resort")}
+      ${row("SPTN",        "SPTN")}
+      ${row("Kecamatan",   "Kecamatan")}
+      ${row("Desa/Kel",    "Desa_Kel")}
+      ${row("Kab/Kota",    "Kab_Kota")}
+      ${row("Luas (Ha)",   "Luas_Ha")}
+      ${row("Jml Bibit",   "Jlh_Bibit")}
+      ${row("Jenis Bibit", "Jn_Bibit")}
+      ${row("Pelaksana",   "Pelaksana")}
+      ${row("Pelaksanaan", "Pelaksanaa")}
+    </table>
+  `;
+
+  popup.hidden = false;
+
+  popupOverlay.setPosition(coordinate);
+
+}
+
+
+// ============================================================
 // CLOSE POPUP WHEN MOVING MAP
 // ============================================================
 
@@ -1123,6 +1242,50 @@ map.on(
               );
 
             }
+
+        }
+
+      );
+
+    }
+
+
+    // --------------------------------------------------------
+    // 4) Cek layer Blok Penanaman BNF
+    // --------------------------------------------------------
+    if (
+      !popupShown &&
+      blokPenanamanBnfLayer.getVisible()
+    ) {
+
+      map.forEachFeatureAtPixel(
+
+        event.pixel,
+
+        function (feature, layer) {
+
+          if (layer !== blokPenanamanBnfLayer) {
+            return false;
+          }
+
+          popupShown = true;
+
+          showBlokPenanamanBnfPopup(
+            feature,
+            event.coordinate
+          );
+
+          return true;
+
+        },
+
+        {
+
+          hitTolerance: 8,
+
+          layerFilter: function (layer) {
+            return layer === blokPenanamanBnfLayer;
+          }
 
         }
 
@@ -1734,6 +1897,12 @@ const adminBoundaryState = {
     loaded: false,
     loading: false,
     url: "data/ps-dampingan-bnf.geojson"
+  },
+
+  blokPenanamanBnf: {
+    loaded: false,
+    loading: false,
+    url: "data/lokasi-blok-penanaman-bnf.geojson"
   }
 
 };
@@ -1851,6 +2020,14 @@ setupAdminBoundaryToggle(
   psDampinganBnfSource,
   "psDampinganBnf",
   "Perhutanan Sosial Dampingan BNF"
+);
+
+setupAdminBoundaryToggle(
+  "toggleBlokPenanamanBnf",
+  blokPenanamanBnfLayer,
+  blokPenanamanBnfSource,
+  "blokPenanamanBnf",
+  "Lokasi Blok Penanaman BNF"
 );
 
 
@@ -2864,6 +3041,8 @@ loadHotspots();
 
 loadTNSBoundary();
 
+initWilayahFilter();
+
 
 // ============================================================
 // DEBUG
@@ -3821,6 +4000,333 @@ basemapRadios.forEach(function (radio) {
   });
 
 });
+
+
+// ============================================================
+// FILTER HOTSPOT PER WILAYAH (Kabupaten → Kecamatan → Kelurahan)
+// ============================================================
+//
+// Data administrasi dibaca dari kelurahan-kalteng.geojson yang
+// sudah ada — properti: kab_kota, kecamatan, kel_desa, nama.
+// Hotspot dihitung dengan point-in-polygon pakai ol.extent +
+// geometry.intersectsCoordinate supaya tidak butuh library tambahan.
+
+let wilayahAdminData   = null;  // GeoJSON raw, di-fetch sekali
+let wilayahAdminFeats  = [];    // ol.Feature[] kelurahan yang sudah diparse
+
+
+async function ensureWilayahData() {
+
+  if (wilayahAdminData) {
+    return;
+  }
+
+  const res = await fetch(
+    `data/kelurahan-kalteng.geojson?ts=${Date.now()}`,
+    { cache: "no-store" }
+  );
+
+  if (!res.ok) {
+    throw new Error("Gagal memuat data wilayah: HTTP " + res.status);
+  }
+
+  wilayahAdminData = await res.json();
+
+  const format = new ol.format.GeoJSON();
+
+  wilayahAdminFeats = format.readFeatures(
+    wilayahAdminData,
+    {
+      dataProjection:    "EPSG:4326",
+      featureProjection: "EPSG:3857"
+    }
+  );
+
+}
+
+
+function buildKabupatenOptions() {
+
+  const kabSet = new Set();
+
+  wilayahAdminFeats.forEach(function (f) {
+    const k = f.get("kab_kota");
+    if (k) kabSet.add(k);
+  });
+
+  const sorted = Array.from(kabSet).sort();
+
+  const sel = document.getElementById("filterKabupaten");
+  sel.innerHTML = '<option value="">— Pilih Kabupaten/Kota —</option>';
+
+  sorted.forEach(function (kab) {
+    const opt = document.createElement("option");
+    opt.value       = kab;
+    opt.textContent = kab;
+    sel.appendChild(opt);
+  });
+
+}
+
+
+function buildKecamatanOptions(kabupaten) {
+
+  const kecSet = new Set();
+
+  wilayahAdminFeats.forEach(function (f) {
+    if (f.get("kab_kota") === kabupaten) {
+      const k = f.get("kecamatan");
+      if (k) kecSet.add(k);
+    }
+  });
+
+  const sorted = Array.from(kecSet).sort();
+
+  const sel = document.getElementById("filterKecamatan");
+  sel.innerHTML = '<option value="">— Pilih Kecamatan —</option>';
+
+  sorted.forEach(function (kec) {
+    const opt = document.createElement("option");
+    opt.value       = kec;
+    opt.textContent = kec;
+    sel.appendChild(opt);
+  });
+
+  sel.disabled = false;
+
+}
+
+
+function buildKelurahanOptions(kabupaten, kecamatan) {
+
+  const kelSet = [];
+
+  wilayahAdminFeats.forEach(function (f) {
+    if (
+      f.get("kab_kota")   === kabupaten &&
+      f.get("kecamatan")  === kecamatan
+    ) {
+      kelSet.push({
+        kel:  f.get("kel_desa"),
+        nama: f.get("nama") || f.get("kel_desa")
+      });
+    }
+  });
+
+  kelSet.sort(function (a, b) {
+    return a.kel.localeCompare(b.kel);
+  });
+
+  const sel = document.getElementById("filterKelurahan");
+  sel.innerHTML = '<option value="">— Pilih Kelurahan/Desa —</option>';
+
+  kelSet.forEach(function (item) {
+    const opt = document.createElement("option");
+    opt.value       = item.kel;
+    opt.textContent = item.nama;
+    sel.appendChild(opt);
+  });
+
+  sel.disabled = false;
+
+}
+
+
+function countHotspotsInPolygon(geomFeature) {
+
+  // Ambil semua titik hotspot yang sedang aktif (sesuai filter sidebar)
+  const hotspots = hotspotSource.getFeatures();
+
+  let high = 0, nominal = 0, low = 0;
+
+  hotspots.forEach(function (hf) {
+
+    const coord = hf.getGeometry().getCoordinates();
+
+    if (geomFeature.getGeometry().intersectsCoordinate(coord)) {
+
+      const c = normalizeConfidence(hf.get("confidence"));
+
+      if      (c === "high")    high++;
+      else if (c === "nominal") nominal++;
+      else                      low++;
+
+    }
+
+  });
+
+  return { high, nominal, low, total: high + nominal + low };
+
+}
+
+
+function showWilayahResult(namaWilayah, counts) {
+
+  const el = document.getElementById("wilayahHotspotResult");
+
+  el.hidden = false;
+
+  el.innerHTML = `
+    <div class="wr-title">Hotspot di wilayah</div>
+    <div class="wr-total">${counts.total}</div>
+    <div class="wr-label">${escapeHTML(namaWilayah)}</div>
+    <div class="wr-breakdown">
+      <span class="wr-chip high">🔴 High: ${counts.high}</span>
+      <span class="wr-chip nominal">🟠 Nominal: ${counts.nominal}</span>
+      <span class="wr-chip low">🟡 Low: ${counts.low}</span>
+    </div>
+  `;
+
+}
+
+
+function hideWilayahResult() {
+
+  const el = document.getElementById("wilayahHotspotResult");
+  if (el) el.hidden = true;
+
+}
+
+
+function getSelectedKelurahanFeature(kabupaten, kecamatan, kelurahan) {
+
+  return wilayahAdminFeats.find(function (f) {
+    return (
+      f.get("kab_kota")  === kabupaten &&
+      f.get("kecamatan") === kecamatan &&
+      f.get("kel_desa")  === kelurahan
+    );
+  }) || null;
+
+}
+
+
+// ---- Event handlers ----
+
+const filterKabEl  = document.getElementById("filterKabupaten");
+const filterKecEl  = document.getElementById("filterKecamatan");
+const filterKelEl  = document.getElementById("filterKelurahan");
+const resetWilayah = document.getElementById("resetWilayahFilter");
+
+
+async function initWilayahFilter() {
+
+  try {
+    await ensureWilayahData();
+    buildKabupatenOptions();
+  }
+  catch (err) {
+    console.error("Gagal inisialisasi filter wilayah:", err);
+  }
+
+}
+
+
+if (filterKabEl) {
+
+  filterKabEl.addEventListener("change", async function () {
+
+    const kab = filterKabEl.value;
+
+    // Reset level bawah
+    filterKecEl.innerHTML = '<option value="">— Pilih Kecamatan —</option>';
+    filterKecEl.disabled  = true;
+    filterKelEl.innerHTML = '<option value="">— Pilih Kelurahan/Desa —</option>';
+    filterKelEl.disabled  = true;
+    hideWilayahResult();
+
+    if (!kab) return;
+
+    await ensureWilayahData();
+    buildKecamatanOptions(kab);
+
+  });
+
+}
+
+
+if (filterKecEl) {
+
+  filterKecEl.addEventListener("change", function () {
+
+    const kab = filterKabEl.value;
+    const kec = filterKecEl.value;
+
+    // Reset level bawah
+    filterKelEl.innerHTML = '<option value="">— Pilih Kelurahan/Desa —</option>';
+    filterKelEl.disabled  = true;
+    hideWilayahResult();
+
+    if (!kab || !kec) return;
+
+    buildKelurahanOptions(kab, kec);
+
+  });
+
+}
+
+
+if (filterKelEl) {
+
+  filterKelEl.addEventListener("change", function () {
+
+    const kab = filterKabEl.value;
+    const kec = filterKecEl.value;
+    const kel = filterKelEl.value;
+
+    hideWilayahResult();
+
+    if (!kab || !kec || !kel) return;
+
+    const feat = getSelectedKelurahanFeature(kab, kec, kel);
+
+    if (!feat) {
+      console.warn("Feature kelurahan tidak ditemukan:", kab, kec, kel);
+      return;
+    }
+
+    const namaWilayah =
+      feat.get("nama") ||
+      `${kel}, Kec. ${kec}, ${kab}`;
+
+    const counts = countHotspotsInPolygon(feat);
+
+    showWilayahResult(namaWilayah, counts);
+
+    // Zoom ke kelurahan yang dipilih
+    const extent = feat.getGeometry().getExtent();
+    map.getView().fit(extent, {
+      padding:  [60, 60, 60, 60],
+      duration: 800,
+      maxZoom:  14
+    });
+
+  });
+
+}
+
+
+if (resetWilayah) {
+
+  resetWilayah.addEventListener("click", function () {
+
+    if (filterKabEl) { filterKabEl.value = ""; }
+
+    if (filterKecEl) {
+      filterKecEl.innerHTML = '<option value="">— Pilih Kecamatan —</option>';
+      filterKecEl.disabled  = true;
+    }
+
+    if (filterKelEl) {
+      filterKelEl.innerHTML = '<option value="">— Pilih Kelurahan/Desa —</option>';
+      filterKelEl.disabled  = true;
+    }
+
+    hideWilayahResult();
+
+  });
+
+}
 
 
 // ============================================================
