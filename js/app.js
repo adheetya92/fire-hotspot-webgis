@@ -63,7 +63,7 @@ const baseLayer = new TileLayer({
 // Google Maps Satellite (XYZ tile, tidak perlu API key)
 const googleLayer = new TileLayer({
   source: new XYZ({
-    url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+    url: "http://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}",
     maxZoom:     20,
     crossOrigin: "anonymous",
     attributions: "© Google"
